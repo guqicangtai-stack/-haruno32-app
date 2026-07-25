@@ -11,19 +11,68 @@ document.querySelectorAll(".tabs button").forEach(btn=>btn.onclick=()=>{
   btn.classList.add("active"); $(btn.dataset.view).classList.add("active"); renderAll();
 });
 
+function normalizeSupabaseUrl(value=""){
+  return value.trim().replace(/\/+$/,"").replace(/\/rest\/v1$/,"");
+}
 function settings(){
-  return {url:localStorage.getItem("haruno32_supabase_url")||"",key:localStorage.getItem("haruno32_supabase_key")||""};
+  return {
+    url:normalizeSupabaseUrl(localStorage.getItem("haruno32_supabase_url")||""),
+    key:(localStorage.getItem("haruno32_supabase_key")||"").trim()
+  };
 }
 function initSupabase(){
   const s=settings();
-  supabaseClient=(s.url&&s.key&&window.supabase)?window.supabase.createClient(s.url,s.key):null;
-  $("supabaseUrl").value=s.url;$("supabaseKey").value=s.key;
+  try{
+    supabaseClient=(s.url&&s.key&&window.supabase)
+      ? window.supabase.createClient(s.url,s.key,{auth:{persistSession:false,autoRefreshToken:false}})
+      : null;
+  }catch(e){
+    supabaseClient=null;
+  }
+  $("supabaseUrl").value=s.url;
+  $("supabaseKey").value=s.key;
   updateBadge();
 }
-async function updateBadge(){
+async function connectionCheck(){
+  const s=settings();
+  if(!s.url)throw new Error("Supabase URLが未入力です");
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(s.url)){
+    throw new Error("URLの形式が違います。末尾の /rest/v1 は削除してください");
+  }
+  if(!s.key || !(s.key.startsWith("sb_publishable_") || s.key.startsWith("eyJ"))){
+    throw new Error("Publishable keyが途中で切れているか、種類が違います");
+  }
+  const response=await fetch(`${s.url}/rest/v1/daily_records?select=id&limit=1`,{
+    headers:{apikey:s.key,Authorization:`Bearer ${s.key}`}
+  });
+  const body=await response.text();
+  if(!response.ok){
+    let message=body;
+    try{
+      const parsed=JSON.parse(body);
+      message=parsed.message||parsed.msg||parsed.error||body;
+    }catch{}
+    throw new Error(`${response.status}: ${message}`);
+  }
+  return true;
+}
+async function updateBadge(showMessage=false){
   const b=$("syncBadge");
-  if(!supabaseClient){b.textContent="端末内保存";return}
-  try{const {error}=await supabaseClient.from("daily_records").select("id").limit(1);if(error)throw error;b.textContent="オンライン同期";}catch(e){b.textContent="接続エラー"}
+  if(!supabaseClient){
+    b.textContent="端末内保存";
+    if(showMessage)alert("SupabaseのURLとPublishable keyを入力して保存してください");
+    return false;
+  }
+  try{
+    await connectionCheck();
+    b.textContent="オンライン同期";
+    if(showMessage)alert("接続成功：オンライン同期になりました");
+    return true;
+  }catch(e){
+    b.textContent="接続エラー";
+    if(showMessage)alert(`接続できませんでした\n\n${e.message}`);
+    return false;
+  }
 }
 function localLoad(){try{return JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]")}catch{return[]}}
 function localSave(){localStorage.setItem(LOCAL_KEY,JSON.stringify(records))}
@@ -141,8 +190,18 @@ function recordHTML(r,actions){
   return `<article class="record"><div class="record-head"><div><strong>${r.record_date}｜${esc(r.house)}</strong><div class="meta">草勢 ${r.vigor}/5｜写真 ${(r.photos||[]).length}枚</div></div><span class="badge">${r.analysis?"分析済み":"未分析"}</span></div><p>${esc(r.work)}</p><p class="meta">${esc(r.notes)}</p>${thumbs?`<div class="thumbs">${thumbs}</div>`:""}${r.analysis?`<div class="analysis">${esc(r.analysis)}</div>`:""}${actions?`<div class="record-actions"><button class="primary" data-share="${r.id}">グリンに送る</button></div>`:""}</article>`;
 }
 $("refreshBtn").onclick=async()=>{await loadRecords();renderAll()};
-$("saveSettings").onclick=()=>{localStorage.setItem("haruno32_supabase_url",$("supabaseUrl").value.trim());localStorage.setItem("haruno32_supabase_key",$("supabaseKey").value.trim());initSupabase();alert("設定を保存しました")};
-$("testConnection").onclick=async()=>{initSupabase();await updateBadge();alert($("syncBadge").textContent)};
+$("saveSettings").onclick=async()=>{
+  const url=normalizeSupabaseUrl($("supabaseUrl").value);
+  const key=$("supabaseKey").value.trim();
+  localStorage.setItem("haruno32_supabase_url",url);
+  localStorage.setItem("haruno32_supabase_key",key);
+  initSupabase();
+  alert("設定を保存しました。続けて「接続を確認」を押してください");
+};
+$("testConnection").onclick=async()=>{
+  initSupabase();
+  await updateBadge(true);
+};
 $("exportBtn").onclick=()=>{
   const blob=new Blob([JSON.stringify({version:1,exported_at:new Date().toISOString(),records},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`HARUNO32_${new Date().toISOString().slice(0,10)}.json`;a.click();
