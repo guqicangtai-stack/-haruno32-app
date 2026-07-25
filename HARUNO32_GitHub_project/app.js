@@ -3,7 +3,7 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="12.0.0";
+const APP_VERSION="13.0.0";
 const DECISION_KEY="haruno32_decisions_v1";
 const TARGET_KEY="haruno32_target_settings_v1";
 function ensureDefaultConnection(){
@@ -800,27 +800,60 @@ function foundationData(){
   ];
   return {checks,score:Math.round(checks.reduce((s,x)=>s+x.value,0)/checks.length)};
 }
-function renderHome(){
-  const d=new Date();
-  $("homeDate").textContent=`${d.getMonth()+1}月${d.getDate()}日　今日の仕事`;
-  const p=priorityData();
-  $("priorityLevel").className=`priority-level ${p.level}`;
-  $("priorityLevel").textContent=p.label;
-  $("homePriority").innerHTML=`<ol>${p.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`;
-  $("homeLatest").innerHTML=compactRecordHTML(records[0]);
-  $("homeSyncState").innerHTML=supabaseClient
-    ? '<span class="online-dot"></span>クラウド同期中'
-    : '<span class="offline-dot"></span>端末内保存';
-  renderPhotoComparison();
-  const f=foundationData();
-  $("foundationScore").textContent=`${f.score}%`;
-  $("foundationBars").innerHTML=f.checks.map(x=>`<div class="foundation-row">
-    <div class="foundation-label"><strong>${esc(x.label)}</strong><span>${esc(x.detail)}</span></div>
-    <div class="progress"><i style="width:${x.value}%"></i></div>
-    <b>${x.value}%</b>
-  </div>`).join("");
-  document.querySelectorAll("[data-home-share]").forEach(b=>b.onclick=()=>openShare(records.find(r=>r.id===b.dataset.homeShare)));
+const FERTILIZER_MASTER={
+  autumn:{label:"10〜11月 定植期",name:"谷崎ブレンドA",ratio:"N － P － K",a:"硝酸カルシウム 1袋",b:"尿素 1/2袋・リン酸アンモニア 1袋・硫酸カリウム 1袋",cost:3014+3268/2+9013+2695,note:"根張りと初期生育を優先。硝酸態窒素は草勢・根域・日射を見て判断。"},
+  winter:{label:"12〜2月 冬期",name:"谷崎ブレンドB",ratio:"N － P － K",a:"硝酸カルシウム 1袋",b:"尿素 1/2袋・リン酸アンモニア 1/2袋・硫酸カリウム 2袋",cost:3014+3268/2+9013/2+2695*2,note:"低温・弱日射期。硝酸態窒素、根の活性、着果負担の釣り合いを重視。"},
+  off:{label:"栽培準備期間",name:"定植準備",ratio:"土壌分析後に確定",a:"施肥はまだ実行しない",b:"土壌分析・還元消毒・灌水均一性を確認",cost:0,note:"定植前は施肥量より、土壌状態と根域環境の準備を優先。"}
+};
+function cropPhase(today=new Date().toISOString().slice(0,10)){
+  const t=targetSettings();
+  if(today<t.cropStart)return {key:"off",label:"作付準備期間"};
+  if(today>t.cropEnd)return {key:"off",label:"栽培終了後"};
+  const m=Number(today.slice(5,7));
+  if(m===10||m===11)return {key:"autumn",label:"定植・初期生育期"};
+  if(m===12||m===1||m===2)return {key:"winter",label:"冬期栽培"};
+  return {key:"autumn",label:"栽培期間"};
 }
+function todayOperation(){const today=new Date().toISOString().slice(0,10);return operations.find(o=>o.date===today)||null}
+function renderCommandPhotos(latest){
+  const el=$("commandPhotos");if(!el)return;
+  const photos=(latest?.photos||[]).slice(0,4);
+  el.innerHTML=photos.length?photos.map((p,i)=>`<figure><img class="zoom-photo" src="${photoSrc(p)}" alt="本日の栽培写真${i+1}"><figcaption>${i===0?"① 代表株":i===1?"② 気になる箇所":`写真${i+1}`}</figcaption></figure>`).join(""):'<div class="empty">本日の写真はまだありません。今日の記録から追加できます。</div>';
+  el.querySelectorAll('.zoom-photo').forEach(img=>img.onclick=()=>window.open(img.src,'_blank','noopener'));
+}
+function renderHome(){
+  const today=new Date().toISOString().slice(0,10), d=new Date();
+  const latest=records[0], op=todayOperation(), env=latestEnvironmentDay(), phase=cropPhase(today), target=targetProgressData(), decision=decisionEngineData(), foundation=foundationData();
+  $("commandDate").textContent=`${d.toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"short"})}｜${phase.label}`;
+  $("cropPhaseBadge").textContent=phase.label;
+  $("cropPhaseBadge").className=`phase-badge ${phase.key}`;
+  $("homeSyncState").innerHTML=supabaseClient?'<span class="online-dot"></span>クラウド同期中':'<span class="offline-dot"></span>端末内保存';
+  const todayHarvest=numberOrZero(op?.harvest), total=operations.reduce((sum,x)=>sum+numberOrZero(x.harvest),0);
+  $("cmdTodayHarvest").textContent=`${todayHarvest.toFixed(1)} kg`;
+  $("cmdHarvestNote").textContent=op?"本日入力済み":"本日の実績は未入力";
+  $("cmdTotalHarvest").textContent=`${total.toFixed(1)} kg`;
+  $("cmdTargetPct").textContent=`${target.pct.toFixed(1)}%`;
+  $("cmdTargetBar").style.width=`${Math.min(100,target.pct)}%`;
+  $("cmdVigor").textContent=latest?`${latest.vigor}/5`:"—";
+  $("cmdVigorNote").textContent=latest?`${latest.record_date}｜${latest.house}`:"本日の記録待ち";
+  const mins=(latest?.work||"").match(/(\d+)\s*分/g)?.reduce((s,x)=>s+Number(x.match(/\d+/)[0]),0)||null;
+  $("cmdWorkMinutes").textContent=mins?`${mins}分`:"—";
+  const recipe=FERTILIZER_MASTER[phase.key]||FERTILIZER_MASTER.autumn;
+  $("fertilizerSeason").textContent=recipe.label;
+  $("fertilizerRecipe").innerHTML=`<div class="fertilizer-name"><strong>${recipe.name}</strong><span>${recipe.ratio}</span></div><div class="fertilizer-lines"><p><b>A液：</b>${esc(recipe.a)}</p><p><b>B液：</b>${esc(recipe.b)}</p></div><div class="fertilizer-cost"><span>標準材料費</span><strong>${recipe.cost?recipe.cost.toLocaleString()+"円":"—"}</strong></div><p class="muted">${esc(recipe.note)}</p>`;
+  $("commandRisk").className=`priority-level ${decision.level}`;$("commandRisk").textContent=decision.label;
+  $("commandAiComment").innerHTML=`<p>${esc(decision.moves[0]||"今日の記録を確認してください。")}</p><p>${esc(decision.alerts[0]?.text||"大きな急変は確認されていません。")}</p>`;
+  $("commandEnvironment").innerHTML=env?`<div class="env-grid command-env"><div><span>平均気温</span><b>${val(env.temp_avg,"℃")}</b></div><div><span>平均湿度</span><b>${val(env.humidity_avg,"%")}</b></div><div><span>CO₂</span><b>${val(env.co2_avg,"ppm")}</b></div><div><span>日射合計</span><b>${val(env.solar_sum)}</b></div></div><p class="muted">${env.date}｜${env.house}</p>`:'<div class="empty">SAWACHI CSVを取り込むと、ここに最新環境が表示されます。</div>';
+  $("commandWork").innerHTML=latest?`<div class="compact-record"><strong>${esc(latest.record_date)}｜${esc(latest.house)}</strong><span class="vigor-pill">草勢 ${latest.vigor}/5</span><p>${esc(latest.work)}</p><p class="meta">${esc(latest.notes)}</p></div>`:'<div class="empty">本日の作業記録はまだありません。</div>';
+  $("commandTop3").innerHTML=decision.moves.map((x,i)=>`<div class="move-item"><b>${i+1}</b><span>${esc(x)}</span></div>`).join("");
+  renderCommandPhotos(latest);
+  $("commandSummary").innerHTML=`<p><b>収穫：</b>${todayHarvest.toFixed(1)}kg（累計 ${total.toFixed(1)}kg）</p><p><b>灌水：</b>${op?`${numberOrZero(op.irrigation)}分・${numberOrZero(op.irrigation_count)}回`:"未入力"}</p><p><b>草勢：</b>${latest?`${latest.vigor}/5`:`未入力`}</p><p><b>施肥：</b>${op?.fertilizer?esc(op.fertilizer):phase.key==="off"?"準備期間のため未使用":"実績未入力"}</p>`;
+  const start=target.s.cropStart,end=target.s.cropEnd;
+  $("commandSchedule").innerHTML=`<ul class="schedule-list"><li><b>定植予定</b><span>${start}</span></li><li><b>収穫計画終了</b><span>${end}</span></li><li><b>次の判断</b><span>${phase.key==="off"?"土壌分析・灌水均一性の確認":"写真・草勢・収穫ペースの週次確認"}</span></li></ul>`;
+  $("foundationScore").textContent=`${foundation.score}%`;
+  $("foundationBars").innerHTML=foundation.checks.map(x=>`<div class="foundation-row"><div class="foundation-label"><strong>${esc(x.label)}</strong><span>${esc(x.detail)}</span></div><div class="progress"><i style="width:${x.value}%"></i></div><b>${x.value}%</b></div>`).join("");
+}
+
 function filteredRecords(){
   const house=$("historyHouse")?.value||"";
   const q=($("historySearch")?.value||"").trim().toLowerCase();
