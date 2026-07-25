@@ -892,9 +892,14 @@ function renderHome(){
   const pulse=Math.round(vigorScore*.42+envScore*.28+paceScore*.30);
   if($("pulseScore")) $("pulseScore").textContent=String(pulse);
   if($("pulseStatement")){
-    const statement=pulse>=88?"今日は、伸ばせる日です。迷わず、精度高く。":pulse>=75?"流れは良好です。小さな変化を見逃さない一日に。":pulse>=62?"農場は安定しています。攻める前に、足元を整える日です。":"今日は守る日です。急がず、原因を一つずつ確かめましょう。";
+    const statement=pulse>=88?"今日は、少ない手数で収量を伸ばせる日です。":pulse>=75?"流れは良好です。余計な作業を増やさず、精度を保ちます。":pulse>=62?"今日は整える日です。攻める作業は一つに絞ります。":"今日は守る日です。損失を防ぐ確認だけに集中します。";
     $("pulseStatement").textContent=statement;
   }
+  const profitMode=pulse>=88?"PUSH":pulse>=75?"CRUISE":pulse>=62?"HOLD":"PROTECT";
+  if($("profitMode")) $("profitMode").textContent=profitMode;
+  if($("profitDecision")) $("profitDecision").textContent=pulse>=88?"今日は、攻める。":pulse>=75?"今日は、増やさない。":pulse>=62?"今日は、一つだけ整える。":"今日は、損を止める。";
+  const fieldVoice=pulse>=88?"農場は応えられます。仕事を増やすより、効く作業を早く。":pulse>=75?"状態は安定。いま必要なのは、追加作業ではなく観察の精度です。":pulse>=62?"少し疲れています。今日の仕事を絞れば、明日に余力を残せます。":"無理に動かさないでください。異常の芽を一つ見つければ十分です。";
+  if($("fieldVoice")) $("fieldVoice").textContent=fieldVoice;
   const recipe=FERTILIZER_MASTER[phase.key]||FERTILIZER_MASTER.autumn;
   $("fertilizerSeason").textContent=recipe.label;
   $("fertilizerRecipe").innerHTML=`<div class="fertilizer-name"><strong>${recipe.name}</strong><span>${recipe.ratio}</span></div><div class="fertilizer-lines"><p><b>A液：</b>${esc(recipe.a)}</p><p><b>B液：</b>${esc(recipe.b)}</p></div><div class="fertilizer-cost"><span>標準材料費</span><strong>${recipe.cost?recipe.cost.toLocaleString()+"円":"—"}</strong></div><p class="muted">${esc(recipe.note)}</p>`;
@@ -902,7 +907,24 @@ function renderHome(){
   $("commandAiComment").innerHTML=`<p>${esc(decision.moves[0]||"今日の記録を確認してください。")}</p><p>${esc(decision.alerts[0]?.text||"大きな急変は確認されていません。")}</p>`;
   $("commandEnvironment").innerHTML=env?`<div class="env-grid command-env"><div><span>平均気温</span><b>${val(env.temp_avg,"℃")}</b></div><div><span>平均湿度</span><b>${val(env.humidity_avg,"%")}</b></div><div><span>CO₂</span><b>${val(env.co2_avg,"ppm")}</b></div><div><span>日射合計</span><b>${val(env.solar_sum)}</b></div></div><p class="muted">${env.date}｜${env.house}</p>`:'<div class="empty">SAWACHI CSVを取り込むと、ここに最新環境が表示されます。</div>';
   $("commandWork").innerHTML=latest?`<div class="compact-record"><strong>${esc(latest.record_date)}｜${esc(latest.house)}</strong><span class="vigor-pill">草勢 ${latest.vigor}/5</span><p>${esc(latest.work)}</p><p class="meta">${esc(latest.notes)}</p></div>`:'<div class="empty">本日の作業記録はまだありません。</div>';
-  $("commandTop3").innerHTML=decision.moves.map((x,i)=>`<div class="move-item"><b>${i+1}</b><span>${esc(x)}</span></div>`).join("");
+  $("commandTop3").innerHTML=decision.moves.slice(0,3).map((x,i)=>`<div class="move-item"><b>${i+1}</b><span>${esc(x)}</span></div>`).join("");
+  const dontItems=[];
+  if(!op?.fertilizer) dontItems.push("追肥を習慣で追加しない");
+  if(pulse>=75) dontItems.push("予定外の作業を増やさない");
+  if(envScore>=72) dontItems.push("環境設定を細かく触りすぎない");
+  if(latest&&numberOrZero(latest.vigor)>=3) dontItems.push("草勢がある株を過度に弱らせない");
+  if(dontItems.length<2) dontItems.push("原因が曖昧なまま資材を投入しない","一度に複数の条件を変えない");
+  if($("dontList")) $("dontList").innerHTML=dontItems.slice(0,3).map((x,i)=>`<div class="move-item"><b>—</b><span>${esc(x)}</span></div>`).join("");
+  if($("doCount")) $("doCount").textContent=String(Math.min(3,decision.moves.length));
+  if($("dontCount")) $("dontCount").textContent=String(Math.min(3,dontItems.length));
+  if($("profitLeverBadge")) $("profitLeverBadge").textContent=decision.label;
+  const price=Math.max(0,Number(localStorage.getItem("haruno32_profit_unit_price")||400));
+  const variable=Math.max(0,Number(localStorage.getItem("haruno32_profit_variable_cost")||120));
+  const margin=todayHarvest*Math.max(0,price-variable);
+  if($("profitUnitPrice")) $("profitUnitPrice").value=String(price);
+  if($("profitVariableCost")) $("profitVariableCost").value=String(variable);
+  if($("estimatedMargin")) $("estimatedMargin").textContent=todayHarvest>0?`¥${Math.round(margin).toLocaleString()}`:"—";
+  if($("marginAssumption")) $("marginAssumption").textContent=todayHarvest>0?`収穫 ${todayHarvest.toFixed(1)}kg × 粗利 ${Math.max(0,price-variable).toLocaleString()}円/kg`:`単価 ${price.toLocaleString()}円 − 変動費 ${variable.toLocaleString()}円 / kg`;
   renderCommandPhotos(latest);
   $("commandSummary").innerHTML=`<p><b>収穫：</b>${todayHarvest.toFixed(1)}kg（累計 ${total.toFixed(1)}kg）</p><p><b>灌水：</b>${op?`${numberOrZero(op.irrigation)}分・${numberOrZero(op.irrigation_count)}回`:"未入力"}</p><p><b>草勢：</b>${latest?`${latest.vigor}/5`:`未入力`}</p><p><b>施肥：</b>${op?.fertilizer?esc(op.fertilizer):phase.key==="off"?"準備期間のため未使用":"実績未入力"}</p>`;
   const start=target.s.cropStart,end=target.s.cropEnd;
@@ -1593,3 +1615,9 @@ envImports=envLoad();
   else{records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));await loadOperations();await loadDecisions();await loadPestRecords();await loadLearningNotes();await loadFailureRecords();}
   renderAll();
 })();
+
+// SIGNATURE / PROFIT assumptions
+document.addEventListener("change",(event)=>{
+  if(event.target?.id==="profitUnitPrice"){localStorage.setItem("haruno32_profit_unit_price",String(Math.max(0,Number(event.target.value)||0)));renderHome();}
+  if(event.target?.id==="profitVariableCost"){localStorage.setItem("haruno32_profit_variable_cost",String(Math.max(0,Number(event.target.value)||0)));renderHome();}
+});

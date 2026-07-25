@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1510">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=21.0.0">
+  <link rel="stylesheet" href="styles.css?v=22.0.0">
   <title>HARUNO32</title>
 </head>
 <body class="product-11">
@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="header-actions">
-    <span class="product-edition">SIGNATURE 1.2</span>
+    <span class="product-edition">SIGNATURE / PROFIT</span>
     <div id="syncBadge" class="sync-badge">接続確認中</div>
   </div>
 </header>
@@ -35,67 +35,83 @@
 
 <main>
 
-<section id="home" class="view active command-view">
-  <section class="pulse-stage" aria-labelledby="pulseHeadline">
-    <div class="pulse-topline">
-      <div class="pulse-wordmark"><span class="h32-glyph">H32</span><span>FARM PERFORMANCE SYSTEM</span></div>
-      <div class="command-status-wrap">
-        <span class="live-dot"><i></i> LIVE</span><span id="cropPhaseBadge" class="phase-badge">判定中</span>
-        <span id="homeSyncState" class="home-sync"></span>
+<section id="home" class="view active profit-command-view">
+  <section class="profit-hero" aria-labelledby="profitDecision">
+    <div class="profit-topline">
+      <div class="profit-signature"><span class="h32-monogram">H32</span><span>PROFIT OPERATING SYSTEM</span></div>
+      <div class="command-status-wrap"><span class="live-dot"><i></i> LIVE</span><span id="cropPhaseBadge" class="phase-badge">判定中</span><span id="homeSyncState" class="home-sync"></span></div>
+    </div>
+
+    <div class="profit-decision-grid">
+      <div class="decision-copy">
+        <p id="commandDate" class="profit-date"></p>
+        <p class="profit-kicker">TODAY'S DECISION</p>
+        <h2 id="profitDecision">迷わない。余計に動かない。</h2>
+        <p id="pulseStatement" class="profit-statement">農場データから、今日もっとも利益につながる判断を選んでいます。</p>
+        <button class="profit-main-action" data-go="entry">30秒で記録する <span>↗</span></button>
+      </div>
+      <div class="decision-orbit" aria-label="本日の判断スコア">
+        <div class="orbit-ring"><strong id="pulseScore">--</strong><span>DECISION<br>SCORE</span></div>
+        <div id="profitMode" class="profit-mode">CALCULATING</div>
       </div>
     </div>
-    <div class="pulse-center">
-      <p id="commandDate" class="pulse-date"></p>
-      <p class="pulse-kicker">TODAY'S FARM PULSE</p>
-      <div class="pulse-score-wrap"><strong id="pulseScore" class="pulse-score">--</strong><span>/100</span></div>
-      <h2 id="pulseHeadline">農場は、今日も前へ進んでいる。</h2>
-      <p id="pulseStatement" class="pulse-statement">記録を読み込み、今日の状態を判定しています。</p>
-      <button class="pulse-cta" data-go="entry">今日を記録する <span>→</span></button>
-    </div>
-    <div class="pulse-rail" aria-label="本日の主要指標">
-      <article><span>HARVEST / TODAY</span><strong id="cmdTodayHarvest">0 kg</strong><small id="cmdHarvestNote">記録待ち</small></article>
-      <article><span>SEASON TOTAL</span><strong id="cmdTotalHarvest">0 kg</strong><small>今作累計</small></article>
-      <article class="target-rail"><span>TARGET / 32T</span><strong id="cmdTargetPct">0%</strong><div class="mini-progress"><i id="cmdTargetBar"></i></div></article>
-      <article><span>VIGOR</span><strong id="cmdVigor">—</strong><small id="cmdVigorNote">記録待ち</small></article>
-      <article><span>WORK</span><strong id="cmdWorkMinutes">—</strong><small>今日の記録から</small></article>
+
+    <div class="profit-strip">
+      <article class="profit-primary-metric"><span>推定粗利益 / TODAY</span><strong id="estimatedMargin">—</strong><small id="marginAssumption">単価・変動費を設定してください</small></article>
+      <article><span>やること</span><strong id="doCount">3</strong><small>利益に効く順</small></article>
+      <article><span>やらないこと</span><strong id="dontCount">—</strong><small>余計な作業を削減</small></article>
+      <article><span>32T PACE</span><strong id="cmdTargetPct">0%</strong><div class="mini-progress"><i id="cmdTargetBar"></i></div></article>
+      <article><span>HARVEST</span><strong id="cmdTodayHarvest">0 kg</strong><small id="cmdHarvestNote">記録待ち</small></article>
     </div>
   </section>
 
-  <div class="command-main-grid">
-    <section class="card fertilizer-card">
-      <div class="row-between"><div><p class="eyebrow">HARUNO32 FERTILIZER MASTER</p><h2>谷崎ブレンド</h2></div><span id="fertilizerSeason" class="viz-badge">判定中</span></div>
-      <div id="fertilizerRecipe"></div>
-    </section>
+  <section class="decision-canvas">
+    <article class="canvas-card do-card">
+      <div class="canvas-label"><span>DO</span><small>利益を動かす</small></div>
+      <div id="commandTop3" class="profit-action-list"></div>
+    </article>
+    <article class="canvas-card dont-card">
+      <div class="canvas-label"><span>DON'T</span><small>今日は省く</small></div>
+      <div id="dontList" class="profit-action-list"></div>
+    </article>
+    <article class="canvas-card voice-card">
+      <div class="canvas-label"><span>FIELD VOICE</span><small>農場から一言</small></div>
+      <blockquote id="fieldVoice">今日は、判断を減らす日です。</blockquote>
+      <div class="voice-meta"><span id="commandRisk" class="priority-level">確認中</span><span id="cmdVigor">—</span></div>
+    </article>
+  </section>
 
-    <section class="card command-ai-card">
-      <div class="row-between"><div><p class="eyebrow">AI DAILY VIEW</p><h2>AIコメント</h2></div><span id="commandRisk" class="priority-level">確認中</span></div>
+  <section class="profit-detail-grid">
+    <article class="card profit-lever-card">
+      <div class="row-between"><div><p class="eyebrow">PROFIT LEVER</p><h2>今日の利益レバー</h2></div><span id="profitLeverBadge" class="viz-badge">判定中</span></div>
       <div id="commandAiComment" class="ai-advice"></div>
-      <div class="quick-actions">
-        <button class="primary" data-go="entry">今日の記録を入力</button>
-        <button class="secondary" data-go="farmmanager">AI農場長を見る</button>
-        <button id="oneTapGrin" class="secondary">グリン分析を作る</button>
+      <div class="profit-assumptions">
+        <label>販売単価 <span><input id="profitUnitPrice" type="number" min="0" step="10" value="400"> 円/kg</span></label>
+        <label>変動費 <span><input id="profitVariableCost" type="number" min="0" step="10" value="120"> 円/kg</span></label>
+        <small>概算表示です。設定値はこの端末に保存されます。</small>
       </div>
-    </section>
-  </div>
+    </article>
+    <article class="card"><p class="eyebrow">ENVIRONMENT</p><h2>環境は一行で</h2><div id="commandEnvironment"></div></article>
+    <article class="card"><p class="eyebrow">TODAY LOG</p><h2>今日の実績</h2><div id="commandWork"></div></article>
+  </section>
 
-  <div class="command-middle-grid">
-    <section class="card"><p class="eyebrow">SAWACHI</p><h2>最新環境</h2><div id="commandEnvironment"></div></section>
-    <section class="card"><p class="eyebrow">TODAY'S WORK</p><h2>今日の作業記録</h2><div id="commandWork"></div></section>
-    <section class="card"><p class="eyebrow">TOP 3</p><h2>今日の重要ポイント</h2><div id="commandTop3" class="move-list"></div></section>
-  </div>
-
-  <section class="card">
-    <div class="row-between"><div><p class="eyebrow">TODAY'S PHOTOS</p><h2>本日の写真</h2></div><button class="secondary compact" data-go="records">農場カルテを見る</button></div>
+  <section class="card photo-stage-card">
+    <div class="row-between"><div><p class="eyebrow">VISUAL CHECK</p><h2>今日の農場</h2></div><button class="secondary compact" data-go="records">履歴を見る</button></div>
     <div id="commandPhotos" class="command-photo-grid"></div>
   </section>
 
-  <div class="command-bottom-grid">
-    <section class="card"><p class="eyebrow">TODAY SUMMARY</p><h2>今日のまとめ</h2><div id="commandSummary"></div></section>
-    <section class="card"><p class="eyebrow">NEXT MILESTONES</p><h2>今後の予定</h2><div id="commandSchedule"></div></section>
-    <section class="card"><p class="eyebrow">DATA FOUNDATION</p><h2>判断データ蓄積</h2><div class="row-between"><span>充足度</span><strong id="foundationScore" class="foundation-score">0%</strong></div><div id="foundationBars" class="foundation-bars compact-foundation"></div></section>
-  </div>
-</section>
+  <details class="legacy-details">
+    <summary>詳しい情報を見る</summary>
+    <div class="command-bottom-grid legacy-command-grid">
+      <section class="card fertilizer-card"><div class="row-between"><div><p class="eyebrow">FERTILIZER</p><h2>施肥基準</h2></div><span id="fertilizerSeason" class="viz-badge">判定中</span></div><div id="fertilizerRecipe"></div></section>
+      <section class="card"><p class="eyebrow">TODAY SUMMARY</p><h2>今日のまとめ</h2><div id="commandSummary"></div></section>
+      <section class="card"><p class="eyebrow">NEXT</p><h2>次の節目</h2><div id="commandSchedule"></div></section>
+      <section class="card"><p class="eyebrow">DATA</p><h2>判断データ</h2><div class="row-between"><span>充足度</span><strong id="foundationScore" class="foundation-score">0%</strong></div><div id="foundationBars" class="foundation-bars compact-foundation"></div></section>
+    </div>
+  </details>
 
+  <div class="hidden-compat" aria-hidden="true"><span id="cmdTotalHarvest"></span><span id="cmdVigorNote"></span><span id="cmdWorkMinutes"></span></div>
+</section>
 
 <section id="records" class="view">
   <section class="card hub-hero">

@@ -1,0 +1,10 @@
+HARUNO32 SIGNATURE / PROFIT 更新手順
+
+1. ZIPを解凍します。
+2. GitHubのHARUNO32リポジトリへ全ファイルを上書きします。
+3. Commit changes を実行します。
+4. Netlifyが Published になるまで待ちます。
+5. アプリURLの末尾に ?v=22 を付けて開きます。
+6. ホーム下部の販売単価・変動費を自分の経営値へ変更します。
+
+Supabaseの追加SQLは不要です。
