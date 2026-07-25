@@ -290,3 +290,19 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 @media(max-width:700px){
   .cloud-operation-bar{align-items:flex-start;flex-direction:column}
 }
+
+
+/* HARUNO32 v11 AI assistant */
+.assistant-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;background:linear-gradient(135deg,#f7fbf7,#e4f0e7);border-top:5px solid #24563a}
+.assistant-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+.comparison-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.comparison-card{border:1px solid var(--line);border-radius:15px;padding:15px;background:#fbfdfb}
+.comparison-card>strong{display:block;margin-bottom:10px}
+.comparison-card>div{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid #e6ece7}
+.comparison-card span{color:var(--muted);font-size:.85rem}.comparison-card b{color:var(--green)}
+.target-number{margin:12px 0}.target-number strong{font-size:2.4rem;color:var(--green)}.target-number span{font-weight:800;color:var(--muted)}
+.target-progress{height:18px;background:#e3ebe5;border-radius:999px;overflow:hidden}.target-progress i{display:block;height:100%;background:linear-gradient(90deg,#24563a,#56a06f);border-radius:999px}
+.target-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.target-stats div{background:#f4f8f5;border-radius:11px;padding:10px}.target-stats span{display:block;font-size:.75rem;color:var(--muted)}.target-stats b{display:block;margin-top:3px}
+.journal-box{white-space:pre-wrap;line-height:1.8;background:#f5f8f5;border-left:5px solid var(--green);padding:18px;border-radius:13px;font-weight:650}
+.photo-timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.photo-timeline figure{margin:0;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}.photo-timeline img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;cursor:zoom-in}.photo-timeline figcaption{padding:9px}.photo-timeline figcaption strong,.photo-timeline figcaption span{display:block}.photo-timeline figcaption span{font-size:.78rem;color:var(--muted);margin-top:3px}.soft-line{border:0;border-top:1px solid var(--line);margin:22px 0}
+@media(max-width:760px){.assistant-hero{align-items:flex-start}.assistant-grid,.comparison-cards{grid-template-columns:1fr}.photo-timeline{grid-template-columns:repeat(2,1fr)}}

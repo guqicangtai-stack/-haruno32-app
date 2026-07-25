@@ -3,7 +3,8 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="10.0.0";
+const APP_VERSION="11.0.0";
+const TARGET_KEY="haruno32_target_settings_v1";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
@@ -807,11 +808,123 @@ function renderHistory(){
   $("recordList").innerHTML=shown.length?shown.map(r=>recordHTML(r,true)).join(""):'<div class="empty">条件に合う記録がありません。</div>';
 }
 
+
+function targetSettings(){
+  let saved={};
+  try{saved=JSON.parse(localStorage.getItem(TARGET_KEY)||"{}")}catch(_){saved={}}
+  return {
+    targetKg:Number(saved.targetKg)||32000,
+    cropStart:saved.cropStart||"2026-10-01",
+    cropEnd:saved.cropEnd||"2027-06-30"
+  };
+}
+function dateDiffDays(a,b){return Math.round((new Date(b)-new Date(a))/86400000)}
+function sumHarvestBetween(start,end){
+  return operations.filter(o=>o.date>=start&&o.date<=end).reduce((s,o)=>s+numberOrZero(o.harvest),0);
+}
+function recordsOn(date){return records.find(r=>r.record_date===date)||null}
+function opsOn(date){return operations.filter(o=>o.date===date)}
+function aggregateOps(date){
+  const xs=opsOn(date);
+  return {
+    harvest:xs.reduce((s,o)=>s+numberOrZero(o.harvest),0),
+    irrigation:xs.reduce((s,o)=>s+numberOrZero(o.irrigation),0),
+    irrigation_count:xs.reduce((s,o)=>s+numberOrZero(o.irrigation_count),0)
+  };
+}
+function envOn(date){
+  for(const imp of envImports){const d=(imp.days||[]).find(x=>x.date===date);if(d)return {...d,house:imp.house}}
+  return null;
+}
+function daySnapshot(date){
+  const r=recordsOn(date),o=aggregateOps(date),e=envOn(date);
+  return {date,record:r,ops:o,env:e};
+}
+function fmtDelta(value,suffix=""){
+  if(value===null||!Number.isFinite(value))return "—";
+  const sign=value>0?"+":"";
+  return `${sign}${Number(value.toFixed(1))}${suffix}`;
+}
+function compareSnapshot(base,other,label){
+  if(!other.record && !other.ops.harvest && !other.env)return `<div class="comparison-card"><strong>${label}</strong><p class="muted">比較データなし</p></div>`;
+  const vigor=(base.record&&other.record)?Number(base.record.vigor)-Number(other.record.vigor):null;
+  const harvest=base.ops.harvest-other.ops.harvest;
+  const irrigation=base.ops.irrigation-other.ops.irrigation;
+  const temp=(base.env&&other.env&&Number.isFinite(Number(base.env.temp_avg))&&Number.isFinite(Number(other.env.temp_avg)))?Number(base.env.temp_avg)-Number(other.env.temp_avg):null;
+  return `<div class="comparison-card"><strong>${label}</strong>
+    <div><span>草勢</span><b>${fmtDelta(vigor)}</b></div>
+    <div><span>収穫</span><b>${fmtDelta(harvest,"kg")}</b></div>
+    <div><span>灌水</span><b>${fmtDelta(irrigation,"分")}</b></div>
+    <div><span>平均気温</span><b>${fmtDelta(temp,"℃")}</b></div></div>`;
+}
+function buildMorningBriefData(){
+  const latest=records[0], env=latestEnvironmentDay(), k=operationKpis(), advice=centerAdviceData();
+  const items=[];
+  if(latest)items.push(`最新記録は${latest.record_date}・${latest.house}、草勢${latest.vigor}/5です。`);
+  else items.push("今日の草勢と写真2枚を記録してください。");
+  items.push(...advice.items.slice(0,3));
+  if(k.weekHarvest>0)items.push(`直近7日収穫は${k.weekHarvest.toFixed(1)}kgです。収穫ペースと草勢を一緒に確認します。`);
+  if(env)items.push(`最新環境は平均${val(env.temp_avg,"℃")}・湿度${val(env.humidity_avg,"%")}・CO₂${val(env.co2_avg,"ppm")}です。`);
+  const priority=priorityData();
+  return {level:advice.level,label:advice.label,items:[...new Set(items)].slice(0,6),priority:priority.items[0]};
+}
+function targetProgressData(){
+  const s=targetSettings(),today=new Date().toISOString().slice(0,10);
+  const harvest=sumHarvestBetween(s.cropStart, today>s.cropEnd?s.cropEnd:today);
+  const pct=Math.max(0,Math.min(100,harvest/s.targetKg*100));
+  const totalDays=Math.max(1,dateDiffDays(s.cropStart,s.cropEnd)+1);
+  const elapsed=today<s.cropStart?0:Math.min(totalDays,Math.max(0,dateDiffDays(s.cropStart,today)+1));
+  const expected=s.targetKg*(elapsed/totalDays);
+  const gap=harvest-expected;
+  const remain=Math.max(0,s.targetKg-harvest);
+  const remainDays=Math.max(0,totalDays-elapsed);
+  const requiredDaily=remainDays?remain/remainDays:remain;
+  return {s,today,harvest,pct,elapsed,totalDays,expected,gap,remain,remainDays,requiredDaily};
+}
+function cultivationJournalText(){
+  const recentRecords=[...records].filter(r=>dateDiffDays(r.record_date,new Date().toISOString().slice(0,10))>=0&&dateDiffDays(r.record_date,new Date().toISOString().slice(0,10))<7);
+  const recentOps=operations.filter(o=>dateDiffDays(o.date,new Date().toISOString().slice(0,10))>=0&&dateDiffDays(o.date,new Date().toISOString().slice(0,10))<7);
+  if(!recentRecords.length&&!recentOps.length)return "直近7日間の記録がまだありません。日次記録や収穫実績を入力すると、自動日誌が作られます。";
+  const avgV=recentRecords.length?(recentRecords.reduce((s,r)=>s+Number(r.vigor||0),0)/recentRecords.length).toFixed(1):"—";
+  const harvest=recentOps.reduce((s,o)=>s+numberOrZero(o.harvest),0);
+  const irrigation=recentOps.reduce((s,o)=>s+numberOrZero(o.irrigation),0);
+  const works=[...new Set(recentRecords.map(r=>r.work).filter(Boolean))].slice(0,3);
+  const analyses=recentRecords.filter(r=>r.analysis).length;
+  let trend="草勢は概ね中間域です";
+  if(Number(avgV)<=2.5)trend="草勢は弱めに推移しています";
+  else if(Number(avgV)>=4.5)trend="草勢は強めに推移しています";
+  return `直近7日間は、${trend}（平均${avgV}/5）。収穫は合計${harvest.toFixed(1)}kg、灌水記録は合計${irrigation.toFixed(0)}分でした。主な作業は${works.length?works.join("、"):"未記録"}です。グリン分析は${analyses}件保存されています。次週は、写真の同位置比較と、収穫量・灌水量・草勢の変化を同じ日付で揃えて判断精度を上げます。`;
+}
+function renderAssistant(){
+  if(!$('morningBrief'))return;
+  const b=buildMorningBriefData();
+  $('assistantStatus').className=`priority-level ${b.level}`;
+  $('assistantStatus').textContent=b.label;
+  $('morningBrief').innerHTML=`<h3>最優先：${esc(b.priority||"記録を確認")}</h3><ol>${b.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`;
+  const t=targetProgressData();
+  const pace=t.today<t.s.cropStart?"栽培開始前":(t.gap>=0?`計画比 ${fmtDelta(t.gap,"kg")}`:`計画比 ${fmtDelta(t.gap,"kg")}`);
+  $('targetMeter').innerHTML=`<div class="target-number"><strong>${t.harvest.toFixed(1)}</strong><span> / ${t.s.targetKg.toLocaleString()}kg</span></div>
+    <div class="target-progress"><i style="width:${t.pct}%"></i></div>
+    <div class="target-stats"><div><span>達成率</span><b>${t.pct.toFixed(1)}%</b></div><div><span>残り</span><b>${t.remain.toFixed(0)}kg</b></div><div><span>必要日平均</span><b>${t.requiredDaily.toFixed(1)}kg</b></div><div><span>進捗</span><b>${pace}</b></div></div>
+    <p class="muted">期間：${t.s.cropStart}〜${t.s.cropEnd}</p>`;
+  const baseDate=records[0]?.record_date||new Date().toISOString().slice(0,10);
+  const d=new Date(baseDate);const yesterday=new Date(d);yesterday.setDate(d.getDate()-1);const week=new Date(d);week.setDate(d.getDate()-7);
+  const ds=x=>x.toLocaleDateString('sv-SE');
+  const base=daySnapshot(baseDate);
+  $('comparisonCards').innerHTML=compareSnapshot(base,daySnapshot(ds(yesterday)),`前日（${ds(yesterday)}）比`)+compareSnapshot(base,daySnapshot(ds(week)),`7日前（${ds(week)}）比`);
+  $('cultivationJournal').textContent=cultivationJournalText();
+  const timeline=[...records].sort((a,b)=>a.record_date.localeCompare(b.record_date)).filter(r=>(r.photos||[])[0]).slice(-12);
+  $('photoTimeline').innerHTML=timeline.length?timeline.map(r=>`<figure><img class="zoom-photo" src="${photoSrc(r.photos[0])}" alt="${esc(r.record_date)} 代表株"><figcaption><strong>${esc(r.record_date)}</strong><span>${esc(r.house)}・草勢${r.vigor}</span></figcaption></figure>`).join(""):'<div class="empty">代表株写真がまだありません。</div>';
+  document.querySelectorAll('#photoTimeline .zoom-photo').forEach(img=>img.onclick=()=>window.open(img.src,'_blank','noopener'));
+}
+function copyTextSafe(text,message){navigator.clipboard.writeText(text).then(()=>alert(message)).catch(()=>prompt("コピーしてください",text));}
+
 function renderAll(){
   renderEnvironment();
   renderCenter();
   renderDashboardPlus();
   renderHome();
+  renderAssistant();
   $("analysisRecord").innerHTML=records.map(r=>`<option value="${r.id}">${r.record_date}｜${esc(r.house)}</option>`).join("")||"<option>記録なし</option>";
   const analyzed=records.filter(r=>r.analysis).length,avg=records.length?(records.reduce((s,r)=>s+Number(r.vigor),0)/records.length).toFixed(1):"-";
   $("metrics").innerHTML=[
@@ -825,7 +938,7 @@ function recordHTML(r,actions){
   const thumbs=(r.photos||[]).map(p=>`<img src="${photoSrc(p)}" alt="栽培写真">`).join("");
   return `<article class="record"><div class="record-head"><div><strong>${r.record_date}｜${esc(r.house)}</strong><div class="meta">草勢 ${r.vigor}/5｜写真 ${(r.photos||[]).length}枚</div></div><span class="badge">${r.analysis?"分析済み":"未分析"}</span></div><p>${esc(r.work)}</p><p class="meta">${esc(r.notes)}</p>${thumbs?`<div class="thumbs">${thumbs}</div>`:""}${r.analysis?`<div class="analysis">${esc(r.analysis)}</div>`:""}${actions?`<div class="record-actions"><button class="primary" data-share="${r.id}">グリンに送る</button></div>`:""}</article>`;
 }
-$("refreshBtn").onclick=async()=>{await loadRecords();renderAll()};
+$("refreshBtn").onclick=async()=>{await loadRecords();await loadOperations();renderAll()};
 $("historyHouse").onchange=renderHistory;
 $("historySearch").oninput=renderHistory;
 $("saveSettings").onclick=async()=>{
@@ -985,11 +1098,26 @@ $("clearEnv").onclick=()=>{
 };
 
 
+if($("copyMorningBrief"))$("copyMorningBrief").onclick=()=>{
+  const b=buildMorningBriefData();copyTextSafe(`【HARUNO32 朝のブリーフ】\n最優先：${b.priority}\n${b.items.map((x,i)=>`${i+1}. ${x}`).join("\n")}`,"朝のブリーフをコピーしました");
+};
+if($("copyJournal"))$("copyJournal").onclick=()=>copyTextSafe(cultivationJournalText(),"栽培日誌をコピーしました");
+if($("saveTargetSettings"))$("saveTargetSettings").onclick=()=>{
+  const data={targetKg:numberOrZero($("targetKg").value)||32000,cropStart:$("cropStart").value,cropEnd:$("cropEnd").value};
+  if(!data.cropStart||!data.cropEnd||data.cropEnd<data.cropStart)return alert("栽培期間を正しく入力してください");
+  localStorage.setItem(TARGET_KEY,JSON.stringify(data));renderAll();alert("32トン目標設定を保存しました");
+};
+const ts=targetSettings();
+if($("targetKg"))$("targetKg").value=ts.targetKg;
+if($("cropStart"))$("cropStart").value=ts.cropStart;
+if($("cropEnd"))$("cropEnd").value=ts.cropEnd;
+
+
 envImports=envLoad();
 (async()=>{
   initSupabase();
   const ok=await updateBadge(false);
-  if(ok) await loadRecords();
-  else records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
+  if(ok){await loadRecords();await loadOperations();}
+  else{records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));await loadOperations();}
   renderAll();
 })();
