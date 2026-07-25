@@ -360,3 +360,15 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 .manager-chat-input{display:grid;grid-template-columns:1fr auto;gap:10px}.manager-chat{display:grid;gap:10px;margin-top:14px}.chat-pair{border-top:1px solid #e1e9e3;padding-top:10px}.chat-user{font-weight:700;margin-bottom:6px}.chat-ai{background:#f1f7f3;border-radius:12px;padding:12px;margin:0}
 @media(max-width:900px){.manager-score-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.manager-grid{grid-template-columns:1fr}.manager-meeting{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.manager-hero{align-items:flex-start;flex-direction:column}.manager-score-grid,.manager-meeting{grid-template-columns:1fr}.manager-question{align-items:flex-start;flex-direction:column}.manager-chat-input{grid-template-columns:1fr}}
+
+/* HARUNO32 v18: six-entry navigation and grouped feature hubs */
+.tabs-v18{grid-template-columns:repeat(6,minmax(112px,1fr));position:sticky;top:0;z-index:20}
+.section-shortcuts{display:flex;gap:.55rem;overflow-x:auto;padding:.65rem 0 1rem;margin-bottom:.25rem}
+.shortcut{white-space:nowrap;border:1px solid var(--line,#d9e2dc);background:#fff;color:#234b35;border-radius:999px;padding:.65rem 1rem;font-weight:700}
+.active-shortcut{background:#eaf4ed;border-color:#7fa68b}
+.hub-hero{display:flex;align-items:center;justify-content:space-between}
+.hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1rem 0}
+.hub-card{display:flex;min-height:132px;flex-direction:column;align-items:flex-start;justify-content:center;gap:.55rem;text-align:left;border:1px solid #d6e2da;background:#fff;border-radius:18px;padding:1.25rem;color:#173d29;box-shadow:0 5px 18px rgba(31,76,49,.06)}
+.hub-card strong{font-size:1.1rem}.hub-card span{color:#63756a;line-height:1.55}.hub-card:hover,.hub-card:focus-visible{border-color:#548366;transform:translateY(-1px)}
+.hub-card.featured{background:#edf6ef;border-color:#7fa68b}
+@media(max-width:760px){.tabs-v18{grid-template-columns:repeat(3,1fr)}.tabs-v18 button{font-size:.86rem;padding:.72rem .35rem}.hub-grid{grid-template-columns:1fr}.hub-card{min-height:108px}}

@@ -1,0 +1,9 @@
+HARUNO32 v18 UI整理版
+
+1. ZIPを解凍
+2. 中のファイルをGitHubへ上書き
+3. Commit changes
+4. NetlifyのPublishedを確認
+5. URL末尾に ?v=18 を付けて開く
+
+Supabase追加SQLは不要です。既存データはそのままです。

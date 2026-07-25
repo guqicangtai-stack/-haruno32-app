@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=17.0.0">
+  <link rel="stylesheet" href="styles.css?v=18.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -18,20 +18,13 @@
   <div id="syncBadge" class="sync-badge">接続確認中</div>
 </header>
 
-<nav class="tabs">
-  <button class="active" data-view="home">司令室</button>
-  <button data-view="farmmanager">AI農場長</button>
-  <button data-view="entry">今日の記録</button>
-  <button data-view="center">栽培センター</button>
-  <button data-view="dashboard">分析</button>
-  <button data-view="assistant">AIアシスタント</button>
-  <button data-view="decision">意思決定</button>
-  <button data-view="pest">防除</button>
-  <button data-view="master">栽培マスター</button>
-  <button data-view="memory">農場の記憶</button>
-  <button data-view="environment">SAWACHI</button>
-  <button data-view="history">履歴</button>
-  <button data-view="settings">設定</button>
+<nav class="tabs tabs-v18" aria-label="メインメニュー">
+  <button class="active" data-view="home">🏠 司令室</button>
+  <button data-view="entry">✍️ 今日の記録</button>
+  <button data-view="records">📚 農場カルテ</button>
+  <button data-view="dashboard">📈 分析</button>
+  <button data-view="airoom">🤖 AI相談室</button>
+  <button data-view="settings">⚙️ 設定</button>
 </nav>
 
 <main>
@@ -68,7 +61,7 @@
       <div id="commandAiComment" class="ai-advice"></div>
       <div class="quick-actions">
         <button class="primary" data-go="entry">今日の記録を入力</button>
-        <button class="secondary" data-go="decision">今日の3手を見る</button>
+        <button class="secondary" data-go="farmmanager">AI農場長を見る</button>
         <button id="oneTapGrin" class="secondary">グリン分析を作る</button>
       </div>
     </section>
@@ -81,7 +74,7 @@
   </div>
 
   <section class="card">
-    <div class="row-between"><div><p class="eyebrow">TODAY'S PHOTOS</p><h2>本日の写真</h2></div><button class="secondary compact" data-go="history">履歴を見る</button></div>
+    <div class="row-between"><div><p class="eyebrow">TODAY'S PHOTOS</p><h2>本日の写真</h2></div><button class="secondary compact" data-go="records">農場カルテを見る</button></div>
     <div id="commandPhotos" class="command-photo-grid"></div>
   </section>
 
@@ -92,6 +85,31 @@
   </div>
 </section>
 
+
+<section id="records" class="view">
+  <section class="card hub-hero">
+    <div><p class="eyebrow">FARM RECORD</p><h2>農場カルテ</h2><p class="muted">過去の記録、栽培基準、学び、防除履歴を一か所から開きます。</p></div>
+  </section>
+  <div class="hub-grid">
+    <button class="hub-card" type="button" data-go="memory"><strong>農場の記憶</strong><span>日付から、その日の農場を丸ごと再現</span></button>
+    <button class="hub-card" type="button" data-go="history"><strong>日次記録・写真履歴</strong><span>これまでの記録と写真を確認</span></button>
+    <button class="hub-card" type="button" data-go="master"><strong>栽培知識・学習ノート</strong><span>谷崎ブレンド、栽培ルール、失敗データ</span></button>
+    <button class="hub-card" type="button" data-go="pest"><strong>防除履歴</strong><span>薬剤散布と系統ローテーションを確認</span></button>
+  </div>
+  <section class="card"><h2>使い分け</h2><p>今日の入力は「今日の記録」、過去を探すときはこの「農場カルテ」を使います。機能は残したまま、入口だけを整理しました。</p></section>
+</section>
+
+<section id="airoom" class="view">
+  <section class="card hub-hero">
+    <div><p class="eyebrow">HARUNO32 AI</p><h2>AI相談室</h2><p class="muted">今日の判断、詳しい分析、意思決定の記録をまとめた入口です。</p></div>
+  </section>
+  <div class="hub-grid">
+    <button class="hub-card featured" type="button" data-go="farmmanager"><strong>AI農場長</strong><span>今日の優先順位・根の健康推定・AI会議</span></button>
+    <button class="hub-card" type="button" data-go="assistant"><strong>AIアシスタント</strong><span>朝のブリーフィングと比較分析</span></button>
+    <button class="hub-card" type="button" data-go="decision"><strong>意思決定ログ</strong><span>判断・理由・結果を記録して検証</span></button>
+  </div>
+  <section class="card"><h2>迷ったときは</h2><p>まず「AI農場長」を開いてください。詳しい比較や記録が必要な場合だけ、ほかの機能へ進みます。</p></section>
+</section>
 
 <section id="farmmanager" class="view">
   <section class="card manager-hero">
@@ -144,6 +162,11 @@
 </section>
 
 <section id="entry" class="view">
+  <section class="section-shortcuts" aria-label="記録メニュー">
+    <button class="shortcut active-shortcut" type="button" data-go="entry">日次記録</button>
+    <button class="shortcut" type="button" data-go="center">収穫・灌水・施肥</button>
+    <button class="shortcut" type="button" data-go="pest">防除記録</button>
+  </section>
   <div class="layout">
     <form id="recordForm" class="card">
       <h2>今日の記録</h2>
