@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=9.0.0">
+  <link rel="stylesheet" href="styles.css?v=10.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -53,6 +53,7 @@
       <div class="quick-actions">
         <button class="primary" data-go="entry">今日の記録をつける</button>
         <button class="secondary" data-go="environment">SAWACHIを見る</button>
+        <button id="oneTapGrin" class="secondary">グリン分析を作る</button>
       </div>
     </section>
 
@@ -244,7 +245,13 @@
       </div>
       <button id="clearOps" class="secondary compact">実績を全消去</button>
     </div>
-    <p class="muted">このv9では実績データはこの端末に保存されます。日次記録・写真・分析は従来どおりSupabase同期です。</p>
+    <div class="cloud-operation-bar">
+      <div>
+        <strong id="opsSyncLabel">実績同期を確認中</strong>
+        <p class="muted">収穫・灌水・施肥実績も、スマホとPCで同じ内容にします。</p>
+      </div>
+      <button id="syncOpsBtn" class="secondary compact">実績をクラウド同期</button>
+    </div>
     <div id="operationList" class="record-list"></div>
   </section>
 </section>
@@ -366,7 +373,7 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v9.0.0｜AI栽培センター・収穫・灌水・施肥・写真比較・クラウド同期</footer>
+<footer class="app-footer">HARUNO32 v10.0.0｜AI栽培センター・収穫・灌水・施肥・写真比較・クラウド同期</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
@@ -381,6 +388,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=9.0.0"></script>
+<script src="app.js?v=10.0.0"></script>
 </body>
 </html>

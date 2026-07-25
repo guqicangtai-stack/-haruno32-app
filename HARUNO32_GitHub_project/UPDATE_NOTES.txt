@@ -1,10 +1,9 @@
-HARUNO32 v9.0.0
-- Adds AI栽培センター
-- Adds harvest, irrigation, irrigation count, nitrogen, fertilizer and decision logging
-- Adds today / 7-day / monthly harvest KPIs
-- Adds harvest trend chart
-- Adds data-quality score from daily record, two photos, AI analysis, operations and environment
-- Adds practical daily advice combining vigor, environment and operation records
-- Adds operations CSV export
-- Existing daily records, photos and AI analysis continue using Supabase
-- New v9 operations log is device-local in this build; this is stated in the UI
+HARUNO32 v10.0.0 完成基盤版
+- 収穫・灌水・施肥実績をSupabaseでスマホ・PC同期
+- 既存の端末内実績をクラウドへ移行する同期ボタン
+- クラウド保存失敗時も端末内データを保持
+- 実績のクラウド削除に対応
+- 今日の日次記録、写真、環境、収穫、灌水、施肥をまとめた「グリン分析を作る」ボタン
+- Supabase用 cultivation_operations テーブルを setup SQLへ追加
+- 日次記録、写真、AI分析、SAWACHI CSV、ダッシュボードは継続
+重要：更新後、Supabase SQL Editorで最新版 supabase_setup.sql を一度実行してください。

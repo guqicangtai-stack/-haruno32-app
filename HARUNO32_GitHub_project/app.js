@@ -3,7 +3,7 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="9.0.0";
+const APP_VERSION="10.0.0";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
@@ -225,7 +225,7 @@ $("recordForm").onsubmit=async e=>{
     const vigor=document.querySelector('input[name="vigor"]:checked')?.value;
     const rec={id:crypto.randomUUID(),record_date:$("date").value,house:$("house").value,work:$("work").value.trim(),vigor:Number(vigor),notes:$("notes").value.trim(),analysis:"",photos:[],created_at:new Date().toISOString()};
     await saveRecord(rec,selectedFiles);e.target.reset();selectedFiles=[];renderPreview();$("date").value=new Date().toISOString().slice(0,10);
-$("opDate").value=new Date().toISOString().slice(0,10);await loadRecords();renderAll();status(supabaseClient?"クラウドへ保存しました":"端末内へ保存しました");
+$("opDate").value=new Date().toISOString().slice(0,10);await loadRecords();await loadOperations();renderAll();status(supabaseClient?"クラウドへ保存しました":"端末内へ保存しました");
   }catch(err){status("保存できませんでした："+err.message)}
 };
 function status(t){$("formStatus").textContent=t;$("formStatus").classList.add("show");setTimeout(()=>$("formStatus").classList.remove("show"),4000)}
@@ -279,18 +279,91 @@ $("saveAnalysis").onclick=async()=>{
   const id=$("analysisRecord").value,text=$("analysisText").value.trim();if(!id||!text)return;
   if(supabaseClient){const {error}=await supabaseClient.from("daily_records").update({analysis:text}).eq("id",id);if(error)return alert(error.message)}
   else{const r=records.find(x=>x.id===id);if(r)r.analysis=text;localSave()}
-  $("analysisText").value="";await loadRecords();renderAll();alert("分析を保存しました");
+  $("analysisText").value="";await loadRecords();await loadOperations();renderAll();alert("分析を保存しました");
 };
 
 function photoSrc(p){return p.url||p.data||""}
 
 
-function loadOperations(){
-  try{operations=JSON.parse(localStorage.getItem(OPS_KEY)||"[]")}
-  catch{operations=[]}
-  operations.sort((a,b)=>(b.date+b.created_at).localeCompare(a.date+a.created_at));
+function localLoadOperations(){
+  try{return JSON.parse(localStorage.getItem(OPS_KEY)||"[]")}
+  catch{return[]}
 }
 function saveOperations(){localStorage.setItem(OPS_KEY,JSON.stringify(operations))}
+function operationFromCloud(o){
+  return {
+    id:o.id,date:o.operation_date,house:o.house,
+    harvest:numberOrZero(o.harvest_kg),
+    irrigation:numberOrZero(o.irrigation_minutes),
+    irrigation_count:numberOrZero(o.irrigation_count),
+    nitrogen:numberOrZero(o.nitrogen_amount),
+    fertilizer:o.fertilizer_note||"",
+    memo:o.decision_note||"",
+    created_at:o.created_at||new Date().toISOString()
+  };
+}
+function operationToCloud(o){
+  return {
+    id:o.id,operation_date:o.date,house:o.house,
+    harvest_kg:numberOrZero(o.harvest),
+    irrigation_minutes:numberOrZero(o.irrigation),
+    irrigation_count:numberOrZero(o.irrigation_count),
+    nitrogen_amount:numberOrZero(o.nitrogen),
+    fertilizer_note:o.fertilizer||"",
+    decision_note:o.memo||"",
+    created_at:o.created_at||new Date().toISOString(),
+    updated_at:new Date().toISOString()
+  };
+}
+async function loadOperations(){
+  const local=localLoadOperations();
+  if(!supabaseClient){
+    operations=local.sort((a,b)=>(b.date+b.created_at).localeCompare(a.date+a.created_at));
+    return;
+  }
+  const {data,error}=await supabaseClient.from("cultivation_operations")
+    .select("*").order("operation_date",{ascending:false}).order("created_at",{ascending:false});
+  if(error){
+    operations=local;
+    updateOpsSyncLabel(`実績テーブル未設定：supabase_setup.sqlを実行してください`,"warn");
+    return;
+  }
+  operations=(data||[]).map(operationFromCloud);
+  saveOperations();
+  updateOpsSyncLabel("収穫・灌水・施肥もクラウド同期中","success");
+}
+async function saveOperation(op){
+  const local=localLoadOperations().filter(x=>x.id!==op.id);
+  local.unshift(op);
+  localStorage.setItem(OPS_KEY,JSON.stringify(local));
+  if(!supabaseClient)return;
+  const {error}=await supabaseClient.from("cultivation_operations").upsert(operationToCloud(op));
+  if(error)throw new Error(`実績クラウド保存：${error.message}`);
+}
+async function deleteOperation(id){
+  operations=operations.filter(o=>o.id!==id);saveOperations();
+  if(supabaseClient){
+    const {error}=await supabaseClient.from("cultivation_operations").delete().eq("id",id);
+    if(error)throw error;
+  }
+}
+function updateOpsSyncLabel(text,kind=""){
+  const el=$("opsSyncLabel");
+  if(!el)return;
+  el.textContent=text;
+  el.className=kind;
+}
+async function syncOperationsToCloud(){
+  if(!supabaseClient)throw new Error("オンライン接続されていません");
+  const local=localLoadOperations();
+  if(local.length){
+    const {error}=await supabaseClient.from("cultivation_operations")
+      .upsert(local.map(operationToCloud));
+    if(error)throw error;
+  }
+  await loadOperations();
+  return local.length;
+}
 function numberOrZero(v){const n=Number(v);return Number.isFinite(n)?n:0}
 function operationKpis(){
   const today=new Date().toISOString().slice(0,10);
@@ -397,7 +470,7 @@ function renderCenter(){
   $("operationList").innerHTML=operations.length?operations.map(operationCard).join(""):'<div class="empty">まだ実績がありません。</div>';
   document.querySelectorAll("[data-op-delete]").forEach(b=>b.onclick=()=>{
     if(!confirm("この実績を削除しますか？"))return;
-    operations=operations.filter(o=>o.id!==b.dataset.opDelete);saveOperations();renderAll();
+    deleteOperation(b.dataset.opDelete).then(()=>renderAll()).catch(e=>alert("削除できませんでした："+e.message));
   });
 }
 function exportOperationsCsv(){
@@ -409,7 +482,7 @@ function exportOperationsCsv(){
   a.download=`HARUNO32_operations_${new Date().toISOString().slice(0,10)}.csv`;a.click();
   URL.revokeObjectURL(a.href);
 }
-$("operationForm").onsubmit=e=>{
+$("operationForm").onsubmit=async e=>{
   e.preventDefault();
   const op={
     id:crypto.randomUUID(),
@@ -423,17 +496,91 @@ $("operationForm").onsubmit=e=>{
     memo:$("opMemo").value.trim(),
     created_at:new Date().toISOString()
   };
-  operations.unshift(op);saveOperations();
-  e.target.reset();$("opDate").value=new Date().toISOString().slice(0,10);
-  $("opStatus").textContent="実績を保存しました";$("opStatus").classList.add("show");
-  setTimeout(()=>$("opStatus").classList.remove("show"),3000);
-  renderAll();
+  try{
+    await saveOperation(op);
+    await loadOperations();
+    e.target.reset();$("opDate").value=new Date().toISOString().slice(0,10);
+    $("opStatus").textContent=supabaseClient?"実績をクラウド保存しました":"実績を端末内へ保存しました";
+    $("opStatus").classList.add("show");
+    setTimeout(()=>$("opStatus").classList.remove("show"),3000);
+    renderAll();
+  }catch(err){
+    $("opStatus").textContent="保存できませんでした："+err.message;
+    $("opStatus").classList.add("show");
+  }
 };
+
+$("syncOpsBtn").onclick=async()=>{
+  try{
+    $("syncOpsBtn").disabled=true;
+    updateOpsSyncLabel("実績を同期中…");
+    const count=await syncOperationsToCloud();
+    renderAll();
+    alert(`実績同期が完了しました（端末内 ${count}件を確認）`);
+  }catch(e){
+    updateOpsSyncLabel("実績同期エラー","warn");
+    alert(`同期できませんでした\n\n${e.message}\n\nSupabase SQL Editorで最新版の supabase_setup.sql を一度実行してください。`);
+  }finally{$("syncOpsBtn").disabled=false}
+};
+function buildOneTapGrinPrompt(){
+  const latest=records[0], env=latestEnvironmentDay(), today=new Date().toISOString().slice(0,10);
+  const ops=operations.filter(o=>o.date===today);
+  const opSummary=ops.length?ops.map(o=>`${o.house}: 収穫${numberOrZero(o.harvest)}kg、灌水${numberOrZero(o.irrigation)}分/${numberOrZero(o.irrigation_count)}回、窒素${numberOrZero(o.nitrogen)}、施肥${o.fertilizer||"記載なし"}、判断${o.memo||"記載なし"}`).join("\n"):"本日の実績は未入力";
+  const envSummary=env?`日付${env.date}、平均気温${val(env.temp_avg,"℃")}、最低${val(env.temp_min,"℃")}、最高${val(env.temp_max,"℃")}、平均湿度${val(env.humidity_avg,"%")}、平均CO2 ${val(env.co2_avg,"ppm")}、概算飽差${calcVpd(env.temp_avg,env.humidity_avg)??"—"}kPa`:"環境データ未取込";
+  return `HARUNO32の本日の栽培判断をしてください。
+
+【最新の日次記録】
+${latest?`日付：${latest.record_date}
+ハウス：${latest.house}
+作業：${latest.work}
+草勢：${latest.vigor}/5
+観察・相談：${latest.notes}
+前回分析：${latest.analysis||"未保存"}
+写真：${(latest.photos||[]).length}枚`:"日次記録なし"}
+
+【本日の収穫・灌水・施肥】
+${opSummary}
+
+【最新環境】
+${envSummary}
+
+【必ず答える項目】
+1. 今日の総合評価
+2. 最優先で確認すること
+3. 灌水判断
+4. 施肥・硝酸態窒素の判断
+5. 摘葉・つる下ろし等の作業判断
+6. 明日までに見る変化
+7. リスクと根拠
+
+HARUNO32の方針に従い、断定しすぎず、現場で実行できる短い指示にしてください。摘葉とつる下ろしは同時に勧めないでください。`;
+}
+$("oneTapGrin").onclick=async()=>{
+  const text=buildOneTapGrinPrompt();
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("本日の分析文をコピーしました。ChatGPTのグリンに貼り付けてください。");
+  }catch{
+    prompt("下の文章をコピーして、グリンに送ってください。",text);
+  }
+};
+
 $("exportOpsCsv").onclick=exportOperationsCsv;
 $("clearOps").onclick=()=>{
   if(!operations.length)return;
-  if(confirm("この端末の栽培実績をすべて消去しますか？")){
-    operations=[];saveOperations();renderAll();
+  if(confirm("栽培実績をすべて消去しますか？ クラウド側からも削除されます。")){
+    (async()=>{
+      try{
+        if(supabaseClient){
+          const ids=operations.map(o=>o.id);
+          if(ids.length){
+            const {error}=await supabaseClient.from("cultivation_operations").delete().in("id",ids);
+            if(error)throw error;
+          }
+        }
+        operations=[];saveOperations();renderAll();
+      }catch(e){alert("全消去できませんでした："+e.message)}
+    })();
   }
 };
 
@@ -695,7 +842,7 @@ $("saveSettings").onclick=async()=>{
 $("testConnection").onclick=async()=>{
   initSupabase();
   const ok=await updateBadge(true);
-  if(ok){await loadRecords();renderAll();}
+  if(ok){await loadRecords();await loadOperations();renderAll();}
 };
 $("syncLocalBtn").onclick=async()=>{
   const btn=$("syncLocalBtn");
@@ -705,7 +852,7 @@ $("syncLocalBtn").onclick=async()=>{
     const ok=await updateBadge(false);
     if(!ok)throw new Error("先に接続を確認してください");
     const result=await syncLocalRecordsToCloud();
-    await loadRecords();renderAll();
+    await loadRecords();await loadOperations();renderAll();
     alert(`同期完了：${result.uploaded}件をクラウドへ保存、${result.skipped}件は既に保存済みです`);
   }catch(e){
     alert(`同期できませんでした\n\n${e.message}`);

@@ -1,0 +1,12 @@
+HARUNO32 v10 更新手順
+
+1. このフォルダの中身をGitHubへ上書きアップロード
+2. NetlifyがPublishedになるまで待つ
+3. Supabaseを開く
+4. SQL Editor → New query
+5. supabase_setup.sql の全文を貼り付けて Run
+6. HARUNO32を ?v=10 で開く
+7. AI栽培センターの「実績をクラウド同期」を押す
+8. スマホとPCで同じ収穫・灌水・施肥実績が表示されることを確認
+
+SQLは create table if not exists を使用しているため、既存の日次記録は消えません。
