@@ -329,3 +329,14 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 .schedule-list{list-style:none;padding:0;margin:0}.schedule-list li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}.compact-foundation .foundation-row{grid-template-columns:minmax(120px,1fr) 1.2fr 44px}.command-env.env-grid{grid-template-columns:repeat(2,1fr)}
 @media(max-width:1050px){.command-kpis{grid-template-columns:repeat(3,1fr)}.command-middle-grid,.command-bottom-grid{grid-template-columns:1fr 1fr}.command-main-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.command-header{align-items:flex-start;flex-direction:column}.command-status-wrap{justify-content:flex-start}.command-kpis{grid-template-columns:1fr 1fr}.command-middle-grid,.command-bottom-grid{grid-template-columns:1fr}.command-photo-grid{grid-template-columns:1fr 1fr}.command-photo-grid img{height:150px}.metric-card-command strong{font-size:1.25rem}}
+
+
+/* v14 防除ローテーション */
+.notice{padding:12px;border:1px solid #d6b45a;background:#fff9e8;border-radius:12px;line-height:1.6}
+.rotation-check{margin:10px 0;padding:12px;border-radius:12px;background:#f2f5f3;border:1px solid #d8e1db}
+.rotation-check.ok{background:#edf8f0;border-color:#8fc29c}
+.rotation-check.alert{background:#fff0ed;border-color:#df9286}
+.pest-history{display:grid;gap:10px}
+.pest-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border:1px solid #dce5df;border-radius:12px;background:#fff}
+.pest-row div{display:flex;flex-direction:column;gap:3px}.pest-row span,.pest-row small{color:#617066}.pest-row small{grid-column:1/-1}
+@media(max-width:650px){.pest-row{grid-template-columns:1fr}}

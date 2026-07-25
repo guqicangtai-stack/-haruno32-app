@@ -93,3 +93,27 @@ create policy "allow anon decisions select" on public.decision_logs for select t
 create policy "allow anon decisions insert" on public.decision_logs for insert to anon with check (true);
 create policy "allow anon decisions update" on public.decision_logs for update to anon using (true) with check (true);
 create policy "allow anon decisions delete" on public.decision_logs for delete to anon using (true);
+
+
+-- v14 防除記録
+create table if not exists public.pest_control_records (
+  id uuid primary key,
+  spray_date date not null,
+  house text not null,
+  pesticide_type text not null,
+  target_pest text not null,
+  product_name text not null,
+  active_ingredient text default '',
+  mode_group text not null,
+  dilution numeric,
+  spray_volume_l numeric,
+  preharvest_days integer,
+  label_max_uses integer,
+  memo text default '',
+  created_at timestamptz default now()
+);
+alter table public.pest_control_records enable row level security;
+drop policy if exists "public pest read" on public.pest_control_records;
+drop policy if exists "public pest insert" on public.pest_control_records;
+create policy "public pest read" on public.pest_control_records for select using (true);
+create policy "public pest insert" on public.pest_control_records for insert with check (true);

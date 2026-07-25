@@ -3,7 +3,8 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="13.0.0";
+const APP_VERSION="14.0.0";
+const PEST_KEY="haruno32_pest_records_v1";
 const DECISION_KEY="haruno32_decisions_v1";
 const TARGET_KEY="haruno32_target_settings_v1";
 function ensureDefaultConnection(){
@@ -15,11 +16,12 @@ function ensureDefaultConnection(){
 }
 ensureDefaultConnection();
 
-let selectedFiles=[], records=[], envImports=[], operations=[], decisions=[], supabaseClient=null, activeRecord=null;
+let selectedFiles=[], records=[], envImports=[], operations=[], decisions=[], pestRecords=[], supabaseClient=null, activeRecord=null;
 const $=id=>document.getElementById(id);
 
 $("date").value=new Date().toISOString().slice(0,10);
 $("opDate").value=new Date().toISOString().slice(0,10);
+if($("pestDate")) $("pestDate").value=new Date().toISOString().slice(0,10);
 
 function goToView(view){
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.view===view));
@@ -1024,7 +1026,61 @@ function renderDecision(){
   document.querySelectorAll('[data-decision-delete]').forEach(b=>b.onclick=()=>{if(confirm("この判断ログを削除しますか？"))deleteDecision(b.dataset.decisionDelete).then(()=>renderAll()).catch(e=>alert(e.message))});
 }
 
+
+function localLoadPest(){try{return JSON.parse(localStorage.getItem(PEST_KEY)||"[]")}catch{return[]}}
+function localSavePest(){localStorage.setItem(PEST_KEY,JSON.stringify(pestRecords))}
+function normalizeGroup(s=""){return s.trim().toUpperCase().replace(/\s+/g," ")}
+async function loadPestRecords(){
+  if(!supabaseClient){pestRecords=localLoadPest();return}
+  const {data,error}=await supabaseClient.from("pest_control_records").select("*").order("spray_date",{ascending:false});
+  pestRecords=error?localLoadPest():(data||[]);
+}
+async function savePestRecord(rec){
+  if(!supabaseClient){pestRecords.unshift(rec);localSavePest();return}
+  const {error}=await supabaseClient.from("pest_control_records").insert(rec);
+  if(error)throw error;
+}
+function sameTarget(a,b){return (a||"").trim()&&(b||"").trim()&&((a||"").includes(b)||(b||"").includes(a))}
+function recentRelevantPest(target,type){return [...pestRecords].sort((a,b)=>String(b.spray_date).localeCompare(String(a.spray_date))).filter(r=>r.pesticide_type===type&&(sameTarget(r.target_pest,target)||!target)).slice(0,5)}
+function updateRotationCheck(){
+  const box=$("rotationCheck"); if(!box)return;
+  const group=normalizeGroup($("pestGroup").value), target=$("pestTarget").value.trim(), type=$("pestType").value;
+  if(!group){box.className="rotation-check";box.textContent="系統コードを入力すると直近履歴と照合します。";return}
+  const recent=recentRelevantPest(target,type), repeated=recent.find(r=>normalizeGroup(r.mode_group)===group);
+  if(repeated){box.className="rotation-check alert";box.innerHTML=`注意：${esc(repeated.spray_date)}にも <b>${esc(group)}</b> を使用しています。同じ対象への連用にならないか確認してください。`;}
+  else {box.className="rotation-check ok";box.textContent=`直近履歴では ${group} の同一系統連用は見つかりません。ラベルと地域指導基準も確認してください。`;}
+}
+function renderPest(){
+  if(!$("pestHistory"))return;
+  $("pestCount").textContent=pestRecords.length;
+  const sorted=[...pestRecords].sort((a,b)=>String(b.spray_date).localeCompare(String(a.spray_date)));
+  const latest=sorted[0];
+  if(!latest){
+    $("rotationBadge").textContent="記録待ち";
+    $("rotationAdvice").innerHTML="<p>最初の散布記録を登録すると、対象病害虫ごとに直近の系統を表示します。</p>";
+    $("pestHistory").innerHTML='<div class="empty">防除記録はまだありません。</div>';return;
+  }
+  const relevant=sorted.filter(r=>r.pesticide_type===latest.pesticide_type&&sameTarget(r.target_pest,latest.target_pest)).slice(0,4);
+  const sameCount=relevant.filter(r=>normalizeGroup(r.mode_group)===normalizeGroup(latest.mode_group)).length;
+  $("rotationBadge").textContent=sameCount>=2?"連用確認":"ローテーション確認";
+  $("rotationBadge").className=`priority-level ${sameCount>=2?"high":"low"}`;
+  $("rotationAdvice").innerHTML=`<p><b>最新：</b>${esc(latest.target_pest)}に ${esc(latest.product_name)}（${esc(latest.mode_group)}）</p><p>${sameCount>=2?"同じ対象で同一系統の記録が続いています。次回は別系統候補を検討し、最新ラベルと指導機関の情報で確認してください。":"次回は直近と異なる系統コードを候補にし、発生状況・抵抗性管理・ラベル条件を合わせて判断します。"}</p>`;
+  $("pestHistory").innerHTML=sorted.slice(0,12).map(r=>`<article class="pest-row"><div><strong>${esc(r.spray_date)}｜${esc(r.house)}</strong><span>${esc(r.pesticide_type)}・${esc(r.target_pest)}</span></div><div><b>${esc(r.product_name)}</b><span>${esc(r.mode_group)}${r.dilution?`・${r.dilution}倍`:""}${r.spray_volume_l?`・${r.spray_volume_l}L`:""}</span></div><small>${esc(r.memo||"")}</small></article>`).join("");
+}
+if($("pestGroup")) ["pestGroup","pestTarget","pestType"].forEach(id=>$(id).addEventListener("input",updateRotationCheck));
+if($("pestForm")) $("pestForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const rec={id:crypto.randomUUID(),spray_date:$("pestDate").value,house:$("pestHouse").value,pesticide_type:$("pestType").value,target_pest:$("pestTarget").value.trim(),product_name:$("pestProduct").value.trim(),active_ingredient:$("pestIngredient").value.trim(),mode_group:normalizeGroup($("pestGroup").value),dilution:Number($("pestDilution").value)||null,spray_volume_l:Number($("pestVolume").value)||null,preharvest_days:Number($("pestPhi").value)||null,label_max_uses:Number($("pestMaxUses").value)||null,memo:$("pestMemo").value.trim(),created_at:new Date().toISOString()};
+  const recent=recentRelevantPest(rec.target_pest,rec.pesticide_type);
+  if(recent[0]&&normalizeGroup(recent[0].mode_group)===rec.mode_group){
+    const ok=confirm(`直前の同対象記録も ${rec.mode_group} です。連用の可能性があります。ラベルと防除方針を確認したうえで保存しますか？`); if(!ok)return;
+  }
+  try{await savePestRecord(rec);await loadPestRecords();renderPest();e.target.reset();$("pestDate").value=new Date().toISOString().slice(0,10);$("pestStatus").textContent=supabaseClient?"クラウドへ保存しました":"端末内へ保存しました";$("pestStatus").classList.add("show");updateRotationCheck();}
+  catch(err){$("pestStatus").textContent="保存できませんでした："+err.message;$("pestStatus").classList.add("show");}
+});
+
 function renderAll(){
+  renderPest();
   renderEnvironment();
   renderCenter();
   renderDashboardPlus();

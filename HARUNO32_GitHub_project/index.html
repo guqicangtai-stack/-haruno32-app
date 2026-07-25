@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=13.0.0">
+  <link rel="stylesheet" href="styles.css?v=14.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -25,6 +25,7 @@
   <button data-view="dashboard">分析</button>
   <button data-view="assistant">AIアシスタント</button>
   <button data-view="decision">意思決定</button>
+  <button data-view="pest">防除</button>
   <button data-view="environment">SAWACHI</button>
   <button data-view="history">履歴</button>
   <button data-view="settings">設定</button>
@@ -129,8 +130,8 @@
 
       <label class="photo-box">
         写真を追加
-        <input id="photos" type="file" accept="image/*" capture="environment" multiple>
-        <span>標準は2枚：①代表株（生長点＋全体） ②今日気になる箇所</span>
+        <input id="photos" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
+        <span>スマホの写真ライブラリ・ファイル・PCフォルダから選択できます。標準は2枚：①代表株 ②気になる箇所（最大4枚）</span>
       </label>
 
       <div id="preview" class="preview"></div>
@@ -383,6 +384,56 @@
   </div>
 </section>
 
+<section id="pest" class="view">
+  <section class="card center-hero">
+    <div>
+      <p class="eyebrow">PEST CONTROL ROTATION</p>
+      <h2>薬剤散布ローテーション・防除記録</h2>
+      <p class="muted">病害虫・系統コード・使用履歴を一緒に残し、同一系統の連用を見える化します。</p>
+    </div>
+    <div class="score-orb"><span>記録件数</span><strong id="pestCount">0</strong><small>件</small></div>
+  </section>
+
+  <div class="layout">
+    <form id="pestForm" class="card">
+      <h2>防除を記録</h2>
+      <p class="notice">登録内容は記録・ローテーション確認用です。実際の使用前に、対象作物・病害虫、希釈倍数、使用時期、使用回数、収穫前日数を必ず最新ラベルで確認してください。</p>
+      <div class="input-pair">
+        <label>散布日<input id="pestDate" type="date" required></label>
+        <label>ハウス<select id="pestHouse" required><option>南ハウス</option><option>北ハウス</option><option>両方</option></select></label>
+      </div>
+      <div class="input-pair">
+        <label>区分<select id="pestType" required><option value="殺菌剤">殺菌剤</option><option value="殺虫剤">殺虫剤</option><option value="殺ダニ剤">殺ダニ剤</option><option value="生物農薬">生物農薬</option><option value="展着剤・その他">展着剤・その他</option></select></label>
+        <label>対象病害虫<input id="pestTarget" required placeholder="例：うどんこ病、アザミウマ"></label>
+      </div>
+      <label>薬剤名<input id="pestProduct" required placeholder="商品名を正確に入力"></label>
+      <div class="input-pair">
+        <label>有効成分<input id="pestIngredient" placeholder="任意・ラベル記載どおり"></label>
+        <label>系統コード（FRAC／IRAC）<input id="pestGroup" required placeholder="例：FRAC 3、IRAC 5"></label>
+      </div>
+      <div class="input-pair">
+        <label>希釈倍数<input id="pestDilution" type="number" min="1" step="1" placeholder="例：2000"></label>
+        <label>散布量（L）<input id="pestVolume" type="number" min="0" step="0.1" placeholder="例：300"></label>
+      </div>
+      <div class="input-pair">
+        <label>収穫前日数<input id="pestPhi" type="number" min="0" step="1" placeholder="ラベル確認"></label>
+        <label>ラベル上の使用回数<input id="pestMaxUses" type="number" min="0" step="1" placeholder="ラベル確認"></label>
+      </div>
+      <label>散布条件・メモ<textarea id="pestMemo" placeholder="気温、湿度、発生程度、混用、散布者など"></textarea></label>
+      <div id="rotationCheck" class="rotation-check">系統コードを入力すると直近履歴と照合します。</div>
+      <button class="primary" type="submit">防除記録を保存</button>
+      <p id="pestStatus" class="status"></p>
+    </form>
+
+    <section class="card">
+      <div class="row-between"><div><p class="eyebrow">ROTATION VIEW</p><h2>次回ローテーション確認</h2></div><span id="rotationBadge" class="priority-level">記録待ち</span></div>
+      <div id="rotationAdvice" class="ai-advice"></div>
+      <h3>直近の防除履歴</h3>
+      <div id="pestHistory" class="pest-history"></div>
+    </section>
+  </div>
+</section>
+
 <section id="environment" class="view">
   <div class="layout">
     <section class="card">
@@ -484,7 +535,7 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v12.0.0｜朝のAIブリーフ・比較・32トンメーター・栽培日誌・写真タイムライン</footer>
+<footer class="app-footer">HARUNO32 v14.0.0｜スマート写真選択・防除ローテーション・32トン栽培司令室</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
