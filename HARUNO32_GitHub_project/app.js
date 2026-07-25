@@ -2,7 +2,7 @@ const LOCAL_KEY="haruno32_records_v1";
 const ENV_KEY="haruno32_environment_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="7.0.0";
+const APP_VERSION="8.0.0";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
@@ -17,11 +17,14 @@ const $=id=>document.getElementById(id);
 
 $("date").value=new Date().toISOString().slice(0,10);
 
-document.querySelectorAll(".tabs button").forEach(btn=>btn.onclick=()=>{
-  document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));
-  document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
-  btn.classList.add("active"); $(btn.dataset.view).classList.add("active"); renderAll();
-});
+function goToView(view){
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.view===view));
+  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.id===view));
+  window.scrollTo({top:0,behavior:"smooth"});
+  renderAll();
+}
+document.querySelectorAll(".tabs button").forEach(btn=>btn.onclick=()=>goToView(btn.dataset.view));
+document.querySelectorAll("[data-go]").forEach(btn=>btn.onclick=()=>goToView(btn.dataset.go));
 
 function normalizeSupabaseUrl(value=""){
   return value.trim().replace(/\/+$/,"").replace(/\/rest\/v1$/,"");
@@ -377,16 +380,141 @@ function exportRecordsCsv(){
   URL.revokeObjectURL(a.href);
 }
 
+
+function sameHousePrevious(latest){
+  return records.find(r=>r.id!==latest.id && r.house===latest.house) || null;
+}
+function compactRecordHTML(r){
+  if(!r)return '<div class="empty">まだ記録がありません。</div>';
+  return `<div class="compact-record">
+    <strong>${esc(r.record_date)}｜${esc(r.house)}</strong>
+    <span class="vigor-pill">草勢 ${r.vigor}/5</span>
+    <p>${esc(r.work)}</p>
+    <p class="meta">${esc(r.notes)}</p>
+    <button class="secondary compact" data-home-share="${r.id}">グリンに送る</button>
+  </div>`;
+}
+function priorityData(){
+  if(!records.length){
+    return {level:"start",label:"記録開始",items:[
+      "今日の作業と草勢を記録する",
+      "代表株と気になる箇所の写真を2枚残す",
+      "記録後にグリンへ送って分析を保存する"
+    ]};
+  }
+  const r=records[0], env=latestEnvironmentDay(), items=[];
+  let level="normal",label="通常確認";
+  if(Number(r.vigor)<=2){
+    level="alert";label="要確認";
+    items.push("草勢が弱め。根域の水分、根傷み、低温、日照不足を先に確認する");
+  }else if(Number(r.vigor)>=5){
+    level="alert";label="要確認";
+    items.push("草勢が強め。過繁茂、着果負担との釣り合い、窒素過多を確認する");
+  }else{
+    items.push("前回からの草勢変化を代表株写真で確認する");
+  }
+  if((r.photos||[]).length<2){
+    level="alert";label="写真不足";
+    items.push("今日は標準写真2枚を残す");
+  }else{
+    items.push("最新写真と前回写真を比較し、生長点・葉色・節間を見る");
+  }
+  if(!r.analysis)items.push("最新記録をグリンへ送り、分析結果を保存する");
+  else items.push("前回のグリン分析から、今日実行する項目を一つ選ぶ");
+  if(env){
+    const vpd=calcVpd(env.temp_avg,env.humidity_avg);
+    if(vpd!==null && vpd<0.4){
+      level="alert";label="環境注意";
+      items.push(`概算飽差 ${vpd}kPa。結露・多湿・病害リスクを確認する`);
+    }else if(vpd!==null && vpd>1.5){
+      level="alert";label="環境注意";
+      items.push(`概算飽差 ${vpd}kPa。乾燥と吸水負担を確認する`);
+    }else{
+      items.push("SAWACHIの最新推移を確認し、灌水判断と照合する");
+    }
+  }else{
+    items.push("SAWACHI CSVが入るまでは、気温・湿度・日射の気づきを記録欄に残す");
+  }
+  return {level,label,items:items.slice(0,4)};
+}
+function photoPanel(record,title){
+  const photos=(record?.photos||[]).slice(0,2);
+  return `<div class="compare-column">
+    <div class="compare-title"><strong>${title}</strong><span>${record?`${esc(record.record_date)}｜${esc(record.house)}`:"—"}</span></div>
+    ${record?`<div class="compare-photos">
+      ${[0,1].map(i=>photos[i]
+        ? `<figure><img class="zoom-photo" src="${photoSrc(photos[i])}" alt="${i===0?"代表株":"気になる箇所"}"><figcaption>${i===0?"① 代表株":"② 気になる箇所"}</figcaption></figure>`
+        : `<div class="photo-placeholder">${i===0?"① 代表株":"② 気になる箇所"}<br>未登録</div>`).join("")}
+    </div>`:'<div class="empty">比較対象がありません。</div>'}
+  </div>`;
+}
+function renderPhotoComparison(){
+  const latest=records[0];
+  if(!latest){
+    $("photoComparison").innerHTML='<div class="empty">記録と写真を保存すると、ここに比較表示されます。</div>';
+    return;
+  }
+  const previous=sameHousePrevious(latest);
+  $("photoComparison").innerHTML=`<div class="photo-compare-grid">${photoPanel(latest,"最新")}${photoPanel(previous,"前回")}</div>`;
+  document.querySelectorAll(".zoom-photo").forEach(img=>img.onclick=()=>window.open(img.src,"_blank","noopener"));
+}
+function foundationData(){
+  const recent=records.slice(0,14);
+  const checks=[
+    {label:"日次記録",value:Math.min(100,Math.round(recent.length/7*100)),detail:`直近 ${recent.length}件`},
+    {label:"標準写真2枚",value:recent.length?Math.round(recent.filter(r=>(r.photos||[]).length>=2).length/recent.length*100):0,detail:"代表株＋気になる箇所"},
+    {label:"グリン分析",value:recent.length?Math.round(recent.filter(r=>r.analysis).length/recent.length*100):0,detail:"分析保存率"},
+    {label:"環境データ",value:envImports.length?100:0,detail:envImports.length?`${envImports.length}回取込済み`:"未取込"}
+  ];
+  return {checks,score:Math.round(checks.reduce((s,x)=>s+x.value,0)/checks.length)};
+}
+function renderHome(){
+  const d=new Date();
+  $("homeDate").textContent=`${d.getMonth()+1}月${d.getDate()}日　今日の仕事`;
+  const p=priorityData();
+  $("priorityLevel").className=`priority-level ${p.level}`;
+  $("priorityLevel").textContent=p.label;
+  $("homePriority").innerHTML=`<ol>${p.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`;
+  $("homeLatest").innerHTML=compactRecordHTML(records[0]);
+  $("homeSyncState").innerHTML=supabaseClient
+    ? '<span class="online-dot"></span>クラウド同期中'
+    : '<span class="offline-dot"></span>端末内保存';
+  renderPhotoComparison();
+  const f=foundationData();
+  $("foundationScore").textContent=`${f.score}%`;
+  $("foundationBars").innerHTML=f.checks.map(x=>`<div class="foundation-row">
+    <div class="foundation-label"><strong>${esc(x.label)}</strong><span>${esc(x.detail)}</span></div>
+    <div class="progress"><i style="width:${x.value}%"></i></div>
+    <b>${x.value}%</b>
+  </div>`).join("");
+  document.querySelectorAll("[data-home-share]").forEach(b=>b.onclick=()=>openShare(records.find(r=>r.id===b.dataset.homeShare)));
+}
+function filteredRecords(){
+  const house=$("historyHouse")?.value||"";
+  const q=($("historySearch")?.value||"").trim().toLowerCase();
+  return records.filter(r=>{
+    const houseOk=!house||r.house===house;
+    const text=[r.record_date,r.house,r.work,r.notes,r.analysis].join(" ").toLowerCase();
+    return houseOk&&(!q||text.includes(q));
+  });
+}
+function renderHistory(){
+  const shown=filteredRecords();
+  $("historyCount").textContent=`${shown.length}件を表示（全${records.length}件）`;
+  $("recordList").innerHTML=shown.length?shown.map(r=>recordHTML(r,true)).join(""):'<div class="empty">条件に合う記録がありません。</div>';
+}
+
 function renderAll(){
   renderEnvironment();
   renderDashboardPlus();
+  renderHome();
   $("analysisRecord").innerHTML=records.map(r=>`<option value="${r.id}">${r.record_date}｜${esc(r.house)}</option>`).join("")||"<option>記録なし</option>";
   const analyzed=records.filter(r=>r.analysis).length,avg=records.length?(records.reduce((s,r)=>s+Number(r.vigor),0)/records.length).toFixed(1):"-";
   $("metrics").innerHTML=[
     ["総記録数",records.length],["分析済み",analyzed],["平均草勢",avg],["写真総数",records.reduce((s,r)=>s+(r.photos||[]).length,0)]
   ].map(x=>`<div class="metric"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join("");
   $("latest").innerHTML=records[0]?recordHTML(records[0],false):'<div class="empty">まだ記録がありません。</div>';
-  $("recordList").innerHTML=records.length?records.map(r=>recordHTML(r,true)).join(""):'<div class="empty">まだ記録がありません。</div>';
+  renderHistory();
   document.querySelectorAll("[data-share]").forEach(b=>b.onclick=()=>openShare(records.find(r=>r.id===b.dataset.share)));
 }
 function recordHTML(r,actions){
@@ -394,6 +522,8 @@ function recordHTML(r,actions){
   return `<article class="record"><div class="record-head"><div><strong>${r.record_date}｜${esc(r.house)}</strong><div class="meta">草勢 ${r.vigor}/5｜写真 ${(r.photos||[]).length}枚</div></div><span class="badge">${r.analysis?"分析済み":"未分析"}</span></div><p>${esc(r.work)}</p><p class="meta">${esc(r.notes)}</p>${thumbs?`<div class="thumbs">${thumbs}</div>`:""}${r.analysis?`<div class="analysis">${esc(r.analysis)}</div>`:""}${actions?`<div class="record-actions"><button class="primary" data-share="${r.id}">グリンに送る</button></div>`:""}</article>`;
 }
 $("refreshBtn").onclick=async()=>{await loadRecords();renderAll()};
+$("historyHouse").onchange=renderHistory;
+$("historySearch").oninput=renderHistory;
 $("saveSettings").onclick=async()=>{
   const url=normalizeSupabaseUrl($("supabaseUrl").value);
   const key=$("supabaseKey").value.replace(/\s+/g,"").trim();
