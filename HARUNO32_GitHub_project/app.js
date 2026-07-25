@@ -1,5 +1,8 @@
 const LOCAL_KEY="haruno32_records_v1";
 const ENV_KEY="haruno32_environment_v1";
+const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
+const DEFAULT_SUPABASE_KEY="sb_publishable_pswWBc9LE6xfvrvHCpstvg_IDMkfSi-";
+const APP_VERSION="5.0.0";
 let selectedFiles=[], records=[], envImports=[], supabaseClient=null, activeRecord=null;
 const $=id=>document.getElementById(id);
 
@@ -15,9 +18,11 @@ function normalizeSupabaseUrl(value=""){
   return value.trim().replace(/\/+$/,"").replace(/\/rest\/v1$/,"");
 }
 function settings(){
+  const savedUrl=localStorage.getItem("haruno32_supabase_url");
+  const savedKey=localStorage.getItem("haruno32_supabase_key");
   return {
-    url:normalizeSupabaseUrl(localStorage.getItem("haruno32_supabase_url")||""),
-    key:(localStorage.getItem("haruno32_supabase_key")||"").trim()
+    url:normalizeSupabaseUrl(savedUrl||DEFAULT_SUPABASE_URL),
+    key:(savedKey||DEFAULT_SUPABASE_KEY).trim()
   };
 }
 function initSupabase(){
@@ -59,18 +64,20 @@ async function connectionCheck(){
 async function updateBadge(showMessage=false){
   const b=$("syncBadge");
   if(!supabaseClient){
-    b.textContent="端末内保存";
+    b.textContent=`端末内保存｜v${APP_VERSION}`;
     if(showMessage)alert("SupabaseのURLとPublishable keyを入力して保存してください");
     return false;
   }
   try{
     await connectionCheck();
-    b.textContent="オンライン同期";
+    b.textContent=`オンライン同期｜v${APP_VERSION}`;
     if(showMessage)alert("接続成功：オンライン同期になりました");
     return true;
   }catch(e){
-    b.textContent="接続エラー";
+    b.textContent=`接続エラー｜v${APP_VERSION}`;
     if(showMessage)alert(`接続できませんでした\n\n${e.message}`);
+    const fs=$("formStatus");
+    if(fs){fs.textContent=`接続エラー：${e.message}`;fs.classList.add("show");}
     return false;
   }
 }
@@ -123,10 +130,14 @@ function renderPreview(){
 }
 $("recordForm").onsubmit=async e=>{
   e.preventDefault();status("保存中…");
+  if(selectedFiles.length!==2){
+    const proceed=confirm(`写真は毎日2枚が標準です。現在 ${selectedFiles.length}枚です。\nこのまま保存しますか？`);
+    if(!proceed){status("保存を中止しました");return;}
+  }
   try{
     const vigor=document.querySelector('input[name="vigor"]:checked')?.value;
     const rec={id:crypto.randomUUID(),record_date:$("date").value,house:$("house").value,work:$("work").value.trim(),vigor:Number(vigor),notes:$("notes").value.trim(),analysis:"",photos:[],created_at:new Date().toISOString()};
-    await saveRecord(rec,selectedFiles);e.target.reset();selectedFiles=[];renderPreview();$("date").value=new Date().toISOString().slice(0,10);await loadRecords();renderAll();status("保存しました");
+    await saveRecord(rec,selectedFiles);e.target.reset();selectedFiles=[];renderPreview();$("date").value=new Date().toISOString().slice(0,10);await loadRecords();renderAll();status(supabaseClient?"クラウドへ保存しました":"端末内へ保存しました");
   }catch(err){status("保存できませんでした："+err.message)}
 };
 function status(t){$("formStatus").textContent=t;$("formStatus").classList.add("show");setTimeout(()=>$("formStatus").classList.remove("show"),4000)}
@@ -193,10 +204,12 @@ $("refreshBtn").onclick=async()=>{await loadRecords();renderAll()};
 $("saveSettings").onclick=async()=>{
   const url=normalizeSupabaseUrl($("supabaseUrl").value);
   const key=$("supabaseKey").value.trim();
-  localStorage.setItem("haruno32_supabase_url",url);
-  localStorage.setItem("haruno32_supabase_key",key);
+  if(url) localStorage.setItem("haruno32_supabase_url",url);
+  else localStorage.removeItem("haruno32_supabase_url");
+  if(key) localStorage.setItem("haruno32_supabase_key",key);
+  else localStorage.removeItem("haruno32_supabase_key");
   initSupabase();
-  alert("設定を保存しました。続けて「接続を確認」を押してください");
+  await updateBadge(true);
 };
 $("testConnection").onclick=async()=>{
   initSupabase();

@@ -1,0 +1,7 @@
+HARUNO32 v5.0.0
+- Supabase connection is preconfigured
+- Visible version in header/footer
+- Daily protocol recommends exactly two photos
+- Cloud/local save result is shown clearly
+- GitHub -> Netlify auto-deploy ready
+- SAWACHI CSV import remains ready for actual CSV testing from 2026-09-19

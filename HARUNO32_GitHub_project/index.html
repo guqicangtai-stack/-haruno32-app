@@ -31,7 +31,7 @@
   <div class="layout">
     <form id="recordForm" class="card">
       <h2>今日の記録</h2>
-      <p class="muted">5項目と写真だけ。日付は自動です。</p>
+      <p class="muted">5項目＋写真2枚。保存するとスマホ・PCで同期します。</p>
 
       <label>1. 日付
         <input id="date" type="date" required>
@@ -69,7 +69,7 @@
       <label class="photo-box">
         写真を追加
         <input id="photos" type="file" accept="image/*" capture="environment" multiple>
-        <span>代表株・気になる箇所・ハウス全体</span>
+        <span>標準は2枚：①代表株（生長点＋全体） ②今日気になる箇所</span>
       </label>
 
       <div id="preview" class="preview"></div>
@@ -153,8 +153,8 @@
 <section id="settings" class="view">
   <div class="layout">
     <section class="card">
-      <h2>オンライン接続設定 <small style="font-size:.45em;font-weight:600;">（通常は操作不要）</small></h2>
-      <p class="muted">SupabaseのURLと公開用キーを設定します。未設定時は端末内だけに保存します。</p>
+      <h2>オンライン接続設定 <small class="setting-note">通常は操作不要</small></h2>
+      <p class="muted">HARUNO32専用の接続先は自動設定済みです。上部が「オンライン同期」なら、そのまま使えます。</p>
       <label>Supabase URL<input id="supabaseUrl" type="url" placeholder="https://xxxxx.supabase.co"></label>
       <label>Supabase anon key<textarea id="supabaseKey" placeholder="公開用 anon key"></textarea></label>
       <button id="saveSettings" class="primary">接続設定を保存</button>
@@ -170,6 +170,7 @@
   </div>
 </section>
 </main>
+<footer class="app-footer">HARUNO32 v5.0.0｜日次記録・写真・クラウド同期・SAWACHI CSV準備版</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
