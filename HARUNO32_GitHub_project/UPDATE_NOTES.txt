@@ -1,8 +1,10 @@
-HARUNO32 v6.1.0
-- Deletes the known truncated API key from older versions
-- Never embeds or restores that invalid key
-- Keeps the correct Supabase Project URL automatically
-- Removes spaces and line breaks when a key is pasted
-- Detects keys ending in '-' as truncated before sending
-- Shows URL, masked key, key length, key type and server error on screen
-- Keeps local records safe while connection is incomplete
+HARUNO32 v7.0.0
+- Keeps the confirmed Legacy anon-key cloud connection
+- Adds a daily decision memo based on vigor, photos, analysis, and imported environment data
+- Adds a 21-record vigor trend graph
+- Adds a compact recent summary
+- Enriches the prompt sent to Grin with recent vigor and environmental data
+- Adds approximate VPD calculation from average temperature and humidity
+- Adds CSV export of cultivation records
+- Keeps photo upload, cloud sync, analysis storage, history, backup, and SAWACHI CSV import
+- Automatic photo diagnosis still requires a secure AI backend and is not falsely represented as completed

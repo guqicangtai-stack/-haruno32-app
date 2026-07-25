@@ -1,5 +1,5 @@
-const CACHE="haruno32-v6-1";
-const ASSETS=["./","index.html?v=6.1.0","styles.css?v=6.1.0","app.js?v=6.1.0","manifest.webmanifest"];
+const CACHE="haruno32-v7";
+const ASSETS=["./","index.html?v=7.0.0","styles.css?v=7.0.0","app.js?v=7.0.0","manifest.webmanifest"];
 
 self.addEventListener("install",event=>{
   self.skipWaiting();

@@ -56,3 +56,35 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 .diagnostic.success{background:#dcf3e2;color:#174c2d}
 .diagnostic.error{background:#fae2df;color:#7b2118}
 .diagnostic strong{display:block;margin-bottom:4px}
+
+.dashboard-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;
+  margin-bottom:18px;
+}
+.brief{
+  padding:16px 18px;
+  border-radius:16px;
+  line-height:1.65;
+}
+.brief h3{margin:0 0 8px;font-size:1.08rem}
+.brief ul{margin:0;padding-left:1.25rem}
+.brief.good{background:#e2f3e6;color:#174c2d}
+.brief.warn{background:#fff1d6;color:#704813}
+.brief.info{background:#eef3ef;color:#33443a}
+.summary-big{
+  font-size:1.12rem;
+  font-weight:800;
+  line-height:1.65;
+  margin:.4rem 0 0;
+}
+.chart-wrap{width:100%;overflow-x:auto}
+.chart-wrap svg{width:100%;min-width:520px;height:auto;display:block}
+.chart-grid{stroke:#dce5de;stroke-width:1}
+.chart-line{fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.chart-dot{fill:currentColor}
+.chart-label{fill:#6b776e;font-size:13px}
+@media(max-width:760px){
+  .dashboard-grid{grid-template-columns:1fr}
+}

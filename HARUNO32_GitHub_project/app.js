@@ -2,7 +2,7 @@ const LOCAL_KEY="haruno32_records_v1";
 const ENV_KEY="haruno32_environment_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="6.1.0";
+const APP_VERSION="7.0.0";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
@@ -72,9 +72,9 @@ async function connectionCheck(){
   if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(s.url)){
     throw new Error("URLの形式が違います。Project URLだけを入力してください");
   }
-  if(!s.key)throw new Error("Publishable keyが未入力です");
+  if(!s.key)throw new Error("anon keyが未入力です");
   if(!(s.key.startsWith("sb_publishable_") || s.key.startsWith("eyJ"))){
-    throw new Error("キーの種類が違います。Publishable keyまたはLegacy anon keyを使用してください");
+    throw new Error("キーの種類が違います。Legacy anon key（eyJで始まるキー）を推奨します");
   }
   if(s.key.endsWith("-")){
     throw new Error("キーが途中で切れています。Supabaseのコピーアイコンで全文をコピーしてください");
@@ -224,25 +224,35 @@ $("recordForm").onsubmit=async e=>{
 };
 function status(t){$("formStatus").textContent=t;$("formStatus").classList.add("show");setTimeout(()=>$("formStatus").classList.remove("show"),4000)}
 
-function report(r){return `【HARUNO32 毎日の栽培記録】
+function report(r){
+  const env=latestEnvironmentDay();
+  const recent=[...records].sort((a,b)=>b.record_date.localeCompare(a.record_date)).slice(0,7);
+  const avgRecent=recent.length?(recent.reduce((s,x)=>s+Number(x.vigor||0),0)/recent.length).toFixed(1):"—";
+  const envText=env
+    ? `\n【最新環境集計】\n日付：${env.date}\nハウス：${env.house}\n平均気温：${val(env.temp_avg,"℃")}\n最低/最高：${val(env.temp_min,"℃")} / ${val(env.temp_max,"℃")}\n平均湿度：${val(env.humidity_avg,"%")}\n平均CO₂：${val(env.co2_avg,"ppm")}\n概算飽差：${val(calcVpd(env.temp_avg,env.humidity_avg),"kPa")}\n`
+    : "\n【最新環境集計】\n未取込\n";
+  return `【HARUNO32 毎日の栽培記録】
 日付：${r.record_date}
 ハウス：${r.house}
 今日の作業：${r.work}
 草勢スコア：${r.vigor}/5
+直近7件の平均草勢：${avgRecent}/5
 気づき・相談：${r.notes}
 写真：${(r.photos||[]).length}枚
-
+${envText}
 グリンへ：
-写真と5項目を読み取り、HARUNO32の過去データ、32t目標、当日の環境データが利用できる場合はそれも照合してください。
+写真と記録を読み取り、HARUNO32の過去データ、32t目標、環境データを照合してください。
+施肥はECだけで決めず、窒素量・硝酸態窒素・根域・気温・日射・草勢を合わせて評価してください。
 
 次の形式で返してください。
 1. 今日の状態評価
 2. 写真から読み取れること
 3. 環境面の評価
-4. 注意点
+4. 根・灌水・施肥の注意点
 5. 明日の優先作業
-6. 追加で確認したいこと
-7. ダッシュボード保存用要約`;
+6. 32t目標に対する先行指標
+7. 追加で確認したいこと
+8. ダッシュボード保存用要約`;
 }
 function recordFiles(r){
   return (r.photos||[]).filter(p=>p.data).map((p,i)=>dataURLtoFile(p.data,p.name||`photo${i+1}.jpg`,p.type));
@@ -267,8 +277,109 @@ $("saveAnalysis").onclick=async()=>{
 };
 
 function photoSrc(p){return p.url||p.data||""}
+
+function formatDateJP(value){
+  const d=new Date(value);
+  return Number.isNaN(d.getTime())?String(value):`${d.getMonth()+1}/${d.getDate()}`;
+}
+function svgLineChart(points,{minY=1,maxY=5,label="草勢"}={}){
+  if(!points.length)return '<div class="empty">グラフ用の記録がありません。</div>';
+  const width=760,height=230,padL=46,padR=20,padT=20,padB=42;
+  const innerW=width-padL-padR,innerH=height-padT-padB;
+  const x=i=>padL+(points.length===1?innerW/2:(i/(points.length-1))*innerW);
+  const y=v=>padT+((maxY-v)/(maxY-minY))*innerH;
+  const path=points.map((p,i)=>`${i?"L":"M"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
+  const grid=[minY,minY+1,minY+2,minY+3,minY+4].filter(v=>v<=maxY).map(v=>
+    `<line x1="${padL}" y1="${y(v)}" x2="${width-padR}" y2="${y(v)}" class="chart-grid"/>
+     <text x="${padL-10}" y="${y(v)+4}" text-anchor="end" class="chart-label">${v}</text>`
+  ).join("");
+  const dots=points.map((p,i)=>
+    `<circle cx="${x(i)}" cy="${y(p.value)}" r="5" class="chart-dot">
+      <title>${p.date}：${p.value}</title>
+    </circle>`
+  ).join("");
+  const labels=points.map((p,i)=>{
+    const show=points.length<=8 || i===0 || i===points.length-1 || i%Math.ceil(points.length/6)===0;
+    return show?`<text x="${x(i)}" y="${height-14}" text-anchor="middle" class="chart-label">${formatDateJP(p.date)}</text>`:"";
+  }).join("");
+  return `<div class="chart-wrap"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${label}推移">
+    ${grid}<path d="${path}" class="chart-line"/>${dots}${labels}
+  </svg></div>`;
+}
+function latestEnvironmentDay(){
+  const latest=envImports[0];
+  return latest?.days?.[0] ? {house:latest.house,...latest.days[0]} : null;
+}
+function calcVpd(temp,humidity){
+  if(!Number.isFinite(temp)||!Number.isFinite(humidity))return null;
+  const es=0.6108*Math.exp((17.27*temp)/(temp+237.3));
+  return Number((es*(1-humidity/100)).toFixed(2));
+}
+function makeTodayBrief(){
+  if(!records.length)return {
+    level:"info",
+    title:"まず1件、今日の記録を保存しましょう",
+    items:["写真は①代表株、②気になる箇所の2枚が標準です。"]
+  };
+  const r=records[0], env=latestEnvironmentDay();
+  const items=[];
+  let level="good";
+  if(r.vigor<=2){items.push("草勢が弱めです。根域の水分、根傷み、低温・日照不足を優先確認。");level="warn";}
+  else if(r.vigor>=5){items.push("草勢がかなり強めです。過繁茂、着果負担との釣り合い、窒素過多に注意。");level="warn";}
+  else items.push("草勢は大きく崩れていません。前日との差を写真で追いましょう。");
+  if(!(r.photos||[]).length){items.push("写真が未登録です。次回は標準2枚を残すと比較精度が上がります。");level="warn";}
+  if(!r.analysis)items.push("未分析です。「グリンに送る」から今日の診断を作成できます。");
+  if(env){
+    const vpd=calcVpd(env.temp_avg,env.humidity_avg);
+    if(vpd!==null){
+      if(vpd<0.4){items.push(`平均飽差は約${vpd}kPa。湿り過ぎ・結露リスクを確認。`);level="warn";}
+      else if(vpd>1.5){items.push(`平均飽差は約${vpd}kPa。乾燥・吸水負担に注意。`);level="warn";}
+      else items.push(`平均飽差は約${vpd}kPa。極端な乾湿ではありません。`);
+    }
+  }else{
+    items.push("SAWACHIデータ未取込です。9月19日以降、CSVを取り込むと環境評価を重ねられます。");
+  }
+  return {level,title:`${r.record_date}｜${r.house} の確認`,items};
+}
+function weeklySummaryText(){
+  const last=[...records].sort((a,b)=>b.record_date.localeCompare(a.record_date)).slice(0,7);
+  if(!last.length)return "まだ記録がありません。";
+  const avgV=(last.reduce((s,r)=>s+Number(r.vigor||0),0)/last.length).toFixed(1);
+  const analyzed=last.filter(r=>r.analysis).length;
+  const photos=last.reduce((s,r)=>s+(r.photos||[]).length,0);
+  const houses=[...new Set(last.map(r=>r.house))].join("・");
+  return `直近${last.length}件｜平均草勢 ${avgV}/5｜分析済み ${analyzed}件｜写真 ${photos}枚｜対象 ${houses}`;
+}
+function renderDashboardPlus(){
+  const trend=[...records].sort((a,b)=>a.record_date.localeCompare(b.record_date)).slice(-21)
+    .map(r=>({date:r.record_date,value:Number(r.vigor)})).filter(p=>Number.isFinite(p.value));
+  $("vigorChart").innerHTML=svgLineChart(trend);
+  const brief=makeTodayBrief();
+  $("todayBrief").className=`brief ${brief.level}`;
+  $("todayBrief").innerHTML=`<h3>${esc(brief.title)}</h3><ul>${brief.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+  $("weeklySummary").textContent=weeklySummaryText();
+}
+function csvEscape(value){
+  const s=String(value??"");
+  return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
+}
+function exportRecordsCsv(){
+  const headers=["日付","ハウス","作業","草勢","気づき・相談","写真枚数","分析"];
+  const rows=records.map(r=>[
+    r.record_date,r.house,r.work,r.vigor,r.notes,(r.photos||[]).length,r.analysis||""
+  ]);
+  const csv="\uFEFF"+[headers,...rows].map(row=>row.map(csvEscape).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`HARUNO32_records_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function renderAll(){
   renderEnvironment();
+  renderDashboardPlus();
   $("analysisRecord").innerHTML=records.map(r=>`<option value="${r.id}">${r.record_date}｜${esc(r.house)}</option>`).join("")||"<option>記録なし</option>";
   const analyzed=records.filter(r=>r.analysis).length,avg=records.length?(records.reduce((s,r)=>s+Number(r.vigor),0)/records.length).toFixed(1):"-";
   $("metrics").innerHTML=[
@@ -315,6 +426,7 @@ $("syncLocalBtn").onclick=async()=>{
     btn.disabled=false;btn.textContent="端末内の記録をクラウドへ同期";
   }
 };
+$("exportCsvBtn").onclick=exportRecordsCsv;
 $("exportBtn").onclick=()=>{
   const blob=new Blob([JSON.stringify({version:1,exported_at:new Date().toISOString(),records},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`HARUNO32_${new Date().toISOString().slice(0,10)}.json`;a.click();

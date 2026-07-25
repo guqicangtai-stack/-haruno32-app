@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=6.1.0">
+  <link rel="stylesheet" href="styles.css?v=7.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -95,6 +95,21 @@
 
 <section id="dashboard" class="view">
   <div id="metrics" class="metrics"></div>
+  <div class="dashboard-grid">
+    <section class="card">
+      <h2>今日の判断メモ</h2>
+      <div id="todayBrief" class="brief info"></div>
+    </section>
+    <section class="card">
+      <h2>直近のまとめ</h2>
+      <p id="weeklySummary" class="summary-big"></p>
+      <p class="muted">記録が増えるほど、草勢・写真・環境の比較精度が上がります。</p>
+    </section>
+  </div>
+  <section class="card">
+    <h2>草勢の推移（直近21件）</h2>
+    <div id="vigorChart"></div>
+  </section>
   <section class="card">
     <h2>最新の状態</h2>
     <div id="latest"></div>
@@ -154,9 +169,9 @@
   <div class="layout">
     <section class="card">
       <h2>オンライン接続設定 <small class="setting-note">通常は操作不要</small></h2>
-      <p class="muted">Project URLは自動設定済みです。Publishable keyだけ、Supabase右側のコピーアイコンから全文を1回貼り付けてください。</p>
+      <p class="muted">Project URLは自動設定済みです。接続には「Legacy anon, service_role API keys」タブの anon（public）を使います。service_roleは絶対に使わないでください。</p>
       <label>Supabase URL<input id="supabaseUrl" type="url" placeholder="https://xxxxx.supabase.co"></label>
-      <label>Supabase anon key<textarea id="supabaseKey" placeholder="公開用 anon key"></textarea></label>
+      <label>Supabase anon key<textarea id="supabaseKey" placeholder="eyJで始まる anon（public）キー"></textarea></label>
       <button id="saveSettings" class="primary">接続設定を保存</button>
       <button id="testConnection" class="secondary">接続を確認</button>
       <div id="connectionDiagnostic" class="diagnostic info">
@@ -174,12 +189,13 @@
       <h2>バックアップ</h2>
       <p class="muted">万一に備え、週1回は外付けSSDにも保存してください。</p>
       <button id="exportBtn" class="primary">JSONを書き出す</button>
+      <button id="exportCsvBtn" class="secondary">記録をCSVで書き出す</button>
       <label class="file-import">バックアップを読み込む<input id="importFile" type="file" accept=".json"></label>
     </section>
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v6.1.0｜日次記録・写真・クラウド同期・SAWACHI CSV準備版</footer>
+<footer class="app-footer">HARUNO32 v7.0.0｜日次記録・写真・クラウド同期・草勢グラフ・判断メモ・SAWACHI CSV</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
@@ -194,6 +210,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=6.1.0"></script>
+<script src="app.js?v=7.0.0"></script>
 </body>
 </html>
