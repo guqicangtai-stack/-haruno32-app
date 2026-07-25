@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=15.0.0">
+  <link rel="stylesheet" href="styles.css?v=16.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -27,6 +27,7 @@
   <button data-view="decision">意思決定</button>
   <button data-view="pest">防除</button>
   <button data-view="master">栽培マスター</button>
+  <button data-view="memory">農場の記憶</button>
   <button data-view="environment">SAWACHI</button>
   <button data-view="history">履歴</button>
   <button data-view="settings">設定</button>
@@ -485,6 +486,57 @@
     <section class="card"><div class="row-between"><div><p class="eyebrow">LEARNING NOTES</p><h2>AI学習ノート</h2></div><span id="learningCount" class="viz-badge">0件</span></div><div id="learningList" class="record-list"></div></section>
     <section class="card"><div class="row-between"><div><p class="eyebrow">FAILURE DATABASE</p><h2>失敗データベース</h2></div><span id="failureCount" class="viz-badge">0件</span></div><div id="failureList" class="record-list"></div></section>
   </div>
+</section>
+
+
+<section id="memory" class="view">
+  <section class="card center-hero">
+    <div>
+      <p class="eyebrow">HARUNO32 FARM MEMORY</p>
+      <h2>農場の記憶・タイムマシン</h2>
+      <p class="muted">指定した一日の記録、環境、防除、判断、学びをまとめ、前年同時期と似た過去記録を呼び出します。</p>
+    </div>
+    <div class="score-orb"><span>関連データ</span><strong id="memoryCount">0</strong><small>件</small></div>
+  </section>
+
+  <section class="card memory-controls">
+    <div class="memory-filter-grid">
+      <label>振り返る日
+        <input id="memoryDate" type="date">
+      </label>
+      <label>ハウス
+        <select id="memoryHouse">
+          <option>すべて</option><option>南ハウス</option><option>北ハウス</option><option>両方</option>
+        </select>
+      </label>
+      <label>前年比較の幅
+        <select id="memoryWindow"><option value="3">前後3日</option><option value="7" selected>前後7日</option><option value="14">前後14日</option></select>
+      </label>
+    </div>
+    <div class="quick-actions">
+      <button id="memoryToday" class="secondary" type="button">今日を見る</button>
+      <button id="memoryLatest" class="secondary" type="button">最新記録を見る</button>
+      <button id="copyMemoryReport" class="primary" type="button">この日のカルテをコピー</button>
+    </div>
+  </section>
+
+  <div class="command-kpis memory-kpis">
+    <article class="metric-card-command"><span>日次記録</span><strong id="memDaily">0</strong><small>件</small></article>
+    <article class="metric-card-command"><span>収穫量</span><strong id="memHarvest">0 kg</strong><small>当日合計</small></article>
+    <article class="metric-card-command"><span>灌水</span><strong id="memIrrigation">0分</strong><small>当日合計</small></article>
+    <article class="metric-card-command"><span>防除</span><strong id="memPest">0</strong><small>件</small></article>
+    <article class="metric-card-command"><span>草勢</span><strong id="memVigor">—</strong><small>当日平均</small></article>
+  </div>
+
+  <div class="layout">
+    <section class="card"><p class="eyebrow">DAY SNAPSHOT</p><h2>その日の農場</h2><div id="memorySnapshot"></div></section>
+    <section class="card"><p class="eyebrow">ENVIRONMENT</p><h2>その日の環境</h2><div id="memoryEnvironment"></div></section>
+  </div>
+  <div class="layout">
+    <section class="card"><p class="eyebrow">LAST YEAR</p><h2>前年同時期</h2><div id="memoryLastYear" class="record-list"></div></section>
+    <section class="card"><p class="eyebrow">SIMILAR DAYS</p><h2>似た過去記録</h2><div id="memorySimilar" class="record-list"></div></section>
+  </div>
+  <section class="card"><p class="eyebrow">FULL TIMELINE</p><h2>関連タイムライン</h2><div id="memoryTimeline" class="memory-timeline"></div></section>
 </section>
 
 <section id="environment" class="view">

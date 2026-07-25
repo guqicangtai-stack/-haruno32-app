@@ -3,7 +3,7 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="15.0.0";
+const APP_VERSION="16.0.0";
 const PEST_KEY="haruno32_pest_records_v1";
 const LEARNING_KEY="haruno32_learning_notes_v1";
 const FAILURE_KEY="haruno32_failure_records_v1";
@@ -26,6 +26,7 @@ $("opDate").value=new Date().toISOString().slice(0,10);
 if($("pestDate")) $("pestDate").value=new Date().toISOString().slice(0,10);
 if($("learningDate")) $("learningDate").value=new Date().toISOString().slice(0,10);
 if($("failureDate")) $("failureDate").value=new Date().toISOString().slice(0,10);
+if($("memoryDate")) $("memoryDate").value=new Date().toISOString().slice(0,10);
 
 function goToView(view){
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.view===view));
@@ -1130,9 +1131,105 @@ function renderMaster(){
 if($("learningForm"))$("learningForm").addEventListener("submit",async e=>{e.preventDefault();const rec={id:crypto.randomUUID(),note_date:$("learningDate").value,house:$("learningHouse").value,learning_text:$("learningText").value.trim(),evidence_text:$("learningEvidence").value.trim(),created_at:new Date().toISOString()};try{await saveLearningNote(rec);await loadLearningNotes();renderMaster();e.target.reset();$("learningDate").value=new Date().toISOString().slice(0,10);$("learningStatus").textContent=supabaseClient?"学びをクラウド保存しました":"学びを端末内保存しました";$("learningStatus").classList.add("show")}catch(err){$("learningStatus").textContent="保存できませんでした："+err.message;$("learningStatus").classList.add("show")}});
 if($("failureForm"))$("failureForm").addEventListener("submit",async e=>{e.preventDefault();const rec={id:crypto.randomUUID(),event_date:$("failureDate").value,house:$("failureHouse").value,event_text:$("failureEvent").value.trim(),cause_text:$("failureCause").value.trim(),response_text:$("failureResponse").value.trim(),created_at:new Date().toISOString()};try{await saveFailureRecord(rec);await loadFailureRecords();renderMaster();e.target.reset();$("failureDate").value=new Date().toISOString().slice(0,10);$("failureStatus").textContent=supabaseClient?"失敗データをクラウド保存しました":"失敗データを端末内保存しました";$("failureStatus").classList.add("show")}catch(err){$("failureStatus").textContent="保存できませんでした："+err.message;$("failureStatus").classList.add("show")}});
 
+
+function dateOnly(value){return String(value||"").slice(0,10)}
+function houseMatches(itemHouse,filter){return !filter||filter==="すべて"||itemHouse===filter||itemHouse==="両方"||filter==="両方"}
+function daysBetween(a,b){const da=new Date(`${a}T12:00:00`),db=new Date(`${b}T12:00:00`);return Math.round((da-db)/86400000)}
+function memoryData(date,house){
+  const daily=records.filter(x=>dateOnly(x.record_date)===date&&houseMatches(x.house,house));
+  const ops=operations.filter(x=>dateOnly(x.date)===date&&houseMatches(x.house,house));
+  const pest=pestRecords.filter(x=>dateOnly(x.spray_date)===date&&houseMatches(x.house,house));
+  const dec=decisions.filter(x=>dateOnly(x.date)===date&&houseMatches(x.house,house));
+  const learn=learningNotes.filter(x=>dateOnly(x.note_date)===date&&houseMatches(x.house,house));
+  const fail=failureRecords.filter(x=>dateOnly(x.event_date)===date&&houseMatches(x.house,house));
+  const env=[];
+  envImports.forEach(imp=>(imp.days||[]).forEach(day=>{if(day.date===date&&houseMatches(imp.house,house))env.push({...day,house:imp.house,file_name:imp.file_name})}));
+  return {daily,ops,pest,dec,learn,fail,env};
+}
+function memoryEventCount(d){return d.daily.length+d.ops.length+d.pest.length+d.dec.length+d.learn.length+d.fail.length+d.env.length}
+function memoryText(d){
+  return [
+    ...d.daily.flatMap(x=>[x.work,x.notes,x.analysis]),
+    ...d.ops.flatMap(x=>[x.fertilizer_note,x.memo]),
+    ...d.pest.flatMap(x=>[x.target_pest,x.product_name,x.active_ingredient,x.memo]),
+    ...d.dec.flatMap(x=>[x.action,x.reason,x.result]),
+    ...d.learn.flatMap(x=>[x.learning_text,x.evidence_text]),
+    ...d.fail.flatMap(x=>[x.event_text,x.cause_text,x.response_text])
+  ].filter(Boolean).join(" ");
+}
+function tokenizeJapanese(text){return new Set(String(text||"").toLowerCase().replace(/[、。・：:（）()\[\]「」『』,./\\]/g," ").split(/\s+/).filter(x=>x.length>=2))}
+function similarScore(target,candidate){
+  let score=0;
+  const tv=target.daily.length?target.daily.reduce((s,x)=>s+Number(x.vigor||0),0)/target.daily.length:null;
+  const cv=candidate.daily.length?candidate.daily.reduce((s,x)=>s+Number(x.vigor||0),0)/candidate.daily.length:null;
+  if(Number.isFinite(tv)&&Number.isFinite(cv))score+=Math.max(0,4-Math.abs(tv-cv))*5;
+  const te=target.env[0],ce=candidate.env[0];
+  if(te&&ce){
+    if(Number.isFinite(te.temp_avg)&&Number.isFinite(ce.temp_avg))score+=Math.max(0,5-Math.abs(te.temp_avg-ce.temp_avg));
+    if(Number.isFinite(te.humidity_avg)&&Number.isFinite(ce.humidity_avg))score+=Math.max(0,5-Math.abs(te.humidity_avg-ce.humidity_avg)/5);
+  }
+  const a=tokenizeJapanese(memoryText(target)),b=tokenizeJapanese(memoryText(candidate));
+  let overlap=0;a.forEach(x=>{if(b.has(x))overlap++});score+=Math.min(20,overlap*3);
+  return Math.round(score);
+}
+function allMemoryDates(){
+  const set=new Set();
+  records.forEach(x=>set.add(dateOnly(x.record_date)));operations.forEach(x=>set.add(dateOnly(x.date)));pestRecords.forEach(x=>set.add(dateOnly(x.spray_date)));decisions.forEach(x=>set.add(dateOnly(x.date)));learningNotes.forEach(x=>set.add(dateOnly(x.note_date)));failureRecords.forEach(x=>set.add(dateOnly(x.event_date)));envImports.forEach(x=>(x.days||[]).forEach(d=>set.add(d.date)));
+  return [...set].filter(Boolean).sort().reverse();
+}
+function memoryMiniRecord(title,date,body,badge=""){
+  return `<article class="record"><div class="record-head"><div><strong>${esc(date)}｜${esc(title)}</strong></div>${badge?`<span class="badge">${esc(badge)}</span>`:""}</div><p>${esc(body||"記録あり")}</p></article>`
+}
+function renderMemory(){
+  if(!$("memoryDate"))return;
+  const date=$("memoryDate").value||new Date().toISOString().slice(0,10),house=$("memoryHouse").value;
+  const d=memoryData(date,house);
+  const harvest=d.ops.reduce((s,x)=>s+Number(x.harvest_kg||0),0),irrigation=d.ops.reduce((s,x)=>s+Number(x.irrigation_minutes||0),0);
+  const vigor=d.daily.length?(d.daily.reduce((s,x)=>s+Number(x.vigor||0),0)/d.daily.length).toFixed(1):"—";
+  $("memoryCount").textContent=memoryEventCount(d);$("memDaily").textContent=d.daily.length;$("memHarvest").textContent=`${round(harvest,1)||0} kg`;$("memIrrigation").textContent=`${round(irrigation,0)||0}分`;$("memPest").textContent=d.pest.length;$("memVigor").textContent=vigor;
+  $("memorySnapshot").innerHTML=memoryEventCount(d)?`
+    <div class="memory-summary-line"><b>${esc(date)}｜${esc(house)}</b><span>${memoryEventCount(d)}件の関連データ</span></div>
+    ${d.daily.map(x=>memoryMiniRecord("日次記録",x.record_date,`${x.work}／${x.notes}`,`草勢 ${x.vigor}`)).join("")}
+    ${d.ops.map(x=>memoryMiniRecord("実績",x.date,`収穫 ${x.harvest_kg||0}kg、灌水 ${x.irrigation_minutes||0}分、${x.fertilizer_note||"施肥メモなし"}`)).join("")}
+    ${d.pest.map(x=>memoryMiniRecord("防除",x.spray_date,`${x.target_pest||"対象未記入"}：${x.product_name||"薬剤名未記入"} ${x.mode_code||""}`)).join("")}
+  `:'<div class="empty">この日の記録はありません。日付またはハウスを変えてください。</div>';
+  $("memoryEnvironment").innerHTML=d.env.length?d.env.map(x=>`<div class="env-grid"><div><span>ハウス</span><b>${esc(x.house)}</b></div><div><span>平均気温</span><b>${val(x.temp_avg,"℃")}</b></div><div><span>最低 / 最高</span><b>${val(x.temp_min,"℃")} / ${val(x.temp_max,"℃")}</b></div><div><span>平均湿度</span><b>${val(x.humidity_avg,"%")}</b></div><div><span>平均CO₂</span><b>${val(x.co2_avg,"ppm")}</b></div><div><span>日射合計</span><b>${val(x.solar_sum)}</b></div></div>`).join(""):'<div class="empty">この日のSAWACHI集計はありません。</div>';
+  const windowDays=Number($("memoryWindow").value||7),lastYearDate=new Date(`${date}T12:00:00`);lastYearDate.setFullYear(lastYearDate.getFullYear()-1);const ly=lastYearDate.toISOString().slice(0,10);
+  const lastYear=allMemoryDates().filter(x=>Math.abs(daysBetween(x,ly))<=windowDays).map(x=>({date:x,data:memoryData(x,house)})).filter(x=>memoryEventCount(x.data)).slice(0,10);
+  $("memoryLastYear").innerHTML=lastYear.length?lastYear.map(x=>memoryMiniRecord("前年同時期",x.date,memoryText(x.data).slice(0,180)||`${memoryEventCount(x.data)}件の記録`,`${memoryEventCount(x.data)}件`)).join(""):'<div class="empty">前年同時期のデータはまだありません。</div>';
+  const similar=allMemoryDates().filter(x=>x!==date).map(x=>{const data=memoryData(x,house);return {date:x,data,score:similarScore(d,data)}}).filter(x=>memoryEventCount(x.data)&&x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+  $("memorySimilar").innerHTML=similar.length?similar.map(x=>memoryMiniRecord("類似日",x.date,memoryText(x.data).slice(0,180)||`${memoryEventCount(x.data)}件の記録`,`類似 ${x.score}点`)).join(""):'<div class="empty">比較できる過去データがまだ不足しています。</div>';
+  const timeline=[
+    ...d.dec.map(x=>({label:"意思決定",text:`${x.action}｜理由：${x.reason||"—"}｜結果：${x.result||"未記入"}`})),
+    ...d.learn.map(x=>({label:"学び",text:`${x.learning_text}${x.evidence_text?`｜根拠：${x.evidence_text}`:""}`})),
+    ...d.fail.map(x=>({label:"異常・失敗",text:`${x.event_text}｜原因仮説：${x.cause_text||"—"}｜対応：${x.response_text||"—"}`})),
+    ...d.pest.map(x=>({label:"防除",text:`${x.target_pest||"対象未記入"}／${x.product_name||"薬剤名未記入"}／${x.mode_code||"系統未記入"}`}))
+  ];
+  $("memoryTimeline").innerHTML=timeline.length?timeline.map(x=>`<div class="memory-event"><span>${esc(x.label)}</span><p>${esc(x.text)}</p></div>`).join(""):'<div class="empty">判断・学び・防除・異常の関連記録はありません。</div>';
+}
+function memoryReportText(){
+  const date=$("memoryDate").value,house=$("memoryHouse").value,d=memoryData(date,house);
+  const lines=[`【HARUNO32 農場の記憶】`,`日付：${date}`,`ハウス：${house}`,`関連データ：${memoryEventCount(d)}件`,""];
+  d.daily.forEach(x=>lines.push(`■日次記録 草勢${x.vigor}/5\n作業：${x.work}\n気づき：${x.notes}${x.analysis?`\nAI分析：${x.analysis}`:""}`));
+  d.ops.forEach(x=>lines.push(`■実績 収穫${x.harvest_kg||0}kg／灌水${x.irrigation_minutes||0}分\n施肥：${x.fertilizer_note||"—"}`));
+  d.env.forEach(x=>lines.push(`■環境 ${x.house} 平均${val(x.temp_avg,"℃")} 湿度${val(x.humidity_avg,"%")} CO₂${val(x.co2_avg,"ppm")}`));
+  d.pest.forEach(x=>lines.push(`■防除 ${x.target_pest||"—"} ${x.product_name||"—"} 系統${x.mode_code||"—"}`));
+  d.dec.forEach(x=>lines.push(`■判断 ${x.action}\n理由：${x.reason||"—"}\n結果：${x.result||"—"}`));
+  d.learn.forEach(x=>lines.push(`■学び ${x.learning_text}\n根拠：${x.evidence_text||"—"}`));
+  d.fail.forEach(x=>lines.push(`■異常 ${x.event_text}\n原因仮説：${x.cause_text||"—"}\n対応：${x.response_text||"—"}`));
+  return lines.join("\n\n");
+}
+if($("memoryDate"))$("memoryDate").addEventListener("change",renderMemory);
+if($("memoryHouse"))$("memoryHouse").addEventListener("change",renderMemory);
+if($("memoryWindow"))$("memoryWindow").addEventListener("change",renderMemory);
+if($("memoryToday"))$("memoryToday").addEventListener("click",()=>{$("memoryDate").value=new Date().toISOString().slice(0,10);renderMemory()});
+if($("memoryLatest"))$("memoryLatest").addEventListener("click",()=>{const dates=allMemoryDates();if(dates.length)$("memoryDate").value=dates[0];renderMemory()});
+if($("copyMemoryReport"))$("copyMemoryReport").addEventListener("click",()=>copyTextSafe(memoryReportText(),"この日の栽培カルテをコピーしました"));
+
 function renderAll(){
   renderPest();
   renderMaster();
+  renderMemory();
   renderEnvironment();
   renderCenter();
   renderDashboardPlus();
