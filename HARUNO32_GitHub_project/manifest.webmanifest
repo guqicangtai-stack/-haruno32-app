@@ -1,10 +1,10 @@
 {
-  "name": "HARUNO32 AI栽培ダッシュボード",
+  "name": "HARUNO32 Farm Intelligence",
   "short_name": "HARUNO32",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f4f7f2",
-  "theme_color": "#24563a",
+  "background_color": "#f3f1e9",
+  "theme_color": "#0b1510",
   "icons": [],
-  "description": "HARUNO32 施設きゅうりAI栽培管理"
+  "description": "毎朝の農場判断をシンプルにする、農家のためのファームインテリジェンス。"
 }
