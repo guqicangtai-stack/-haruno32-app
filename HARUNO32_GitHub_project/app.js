@@ -1,8 +1,9 @@
 const LOCAL_KEY="haruno32_records_v1";
 const ENV_KEY="haruno32_environment_v1";
+const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="8.0.0";
+const APP_VERSION="9.0.0";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
@@ -12,10 +13,11 @@ function ensureDefaultConnection(){
 }
 ensureDefaultConnection();
 
-let selectedFiles=[], records=[], envImports=[], supabaseClient=null, activeRecord=null;
+let selectedFiles=[], records=[], envImports=[], operations=[], supabaseClient=null, activeRecord=null;
 const $=id=>document.getElementById(id);
 
 $("date").value=new Date().toISOString().slice(0,10);
+$("opDate").value=new Date().toISOString().slice(0,10);
 
 function goToView(view){
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.view===view));
@@ -222,7 +224,8 @@ $("recordForm").onsubmit=async e=>{
   try{
     const vigor=document.querySelector('input[name="vigor"]:checked')?.value;
     const rec={id:crypto.randomUUID(),record_date:$("date").value,house:$("house").value,work:$("work").value.trim(),vigor:Number(vigor),notes:$("notes").value.trim(),analysis:"",photos:[],created_at:new Date().toISOString()};
-    await saveRecord(rec,selectedFiles);e.target.reset();selectedFiles=[];renderPreview();$("date").value=new Date().toISOString().slice(0,10);await loadRecords();renderAll();status(supabaseClient?"クラウドへ保存しました":"端末内へ保存しました");
+    await saveRecord(rec,selectedFiles);e.target.reset();selectedFiles=[];renderPreview();$("date").value=new Date().toISOString().slice(0,10);
+$("opDate").value=new Date().toISOString().slice(0,10);await loadRecords();renderAll();status(supabaseClient?"クラウドへ保存しました":"端末内へ保存しました");
   }catch(err){status("保存できませんでした："+err.message)}
 };
 function status(t){$("formStatus").textContent=t;$("formStatus").classList.add("show");setTimeout(()=>$("formStatus").classList.remove("show"),4000)}
@@ -280,6 +283,159 @@ $("saveAnalysis").onclick=async()=>{
 };
 
 function photoSrc(p){return p.url||p.data||""}
+
+
+function loadOperations(){
+  try{operations=JSON.parse(localStorage.getItem(OPS_KEY)||"[]")}
+  catch{operations=[]}
+  operations.sort((a,b)=>(b.date+b.created_at).localeCompare(a.date+a.created_at));
+}
+function saveOperations(){localStorage.setItem(OPS_KEY,JSON.stringify(operations))}
+function numberOrZero(v){const n=Number(v);return Number.isFinite(n)?n:0}
+function operationKpis(){
+  const today=new Date().toISOString().slice(0,10);
+  const todayOps=operations.filter(o=>o.date===today);
+  const last7=operations.filter(o=>{
+    const diff=(new Date(today)-new Date(o.date))/86400000;
+    return diff>=0&&diff<7;
+  });
+  const month=today.slice(0,7);
+  const monthOps=operations.filter(o=>o.date.startsWith(month));
+  return {
+    todayHarvest:todayOps.reduce((s,o)=>s+numberOrZero(o.harvest),0),
+    weekHarvest:last7.reduce((s,o)=>s+numberOrZero(o.harvest),0),
+    monthHarvest:monthOps.reduce((s,o)=>s+numberOrZero(o.harvest),0),
+    weekIrrigation:last7.reduce((s,o)=>s+numberOrZero(o.irrigation),0)
+  };
+}
+function centerQualityScore(){
+  const latest=records[0], today=new Date().toISOString().slice(0,10);
+  const todayOp=operations.find(o=>o.date===today);
+  const env=latestEnvironmentDay();
+  const checks=[
+    latest?20:0,
+    latest&&(latest.photos||[]).length>=2?20:0,
+    latest?.analysis?20:0,
+    todayOp?20:0,
+    env?20:0
+  ];
+  return checks.reduce((a,b)=>a+b,0);
+}
+function centerAdviceData(){
+  const latest=records[0], env=latestEnvironmentDay();
+  const today=new Date().toISOString().slice(0,10);
+  const op=operations.find(o=>o.date===today);
+  const items=[];
+  let level="normal",label="通常";
+  if(!latest){
+    return {level:"start",label:"記録待ち",items:["まず今日の草勢と写真2枚を記録してください。"]};
+  }
+  if(Number(latest.vigor)<=2){
+    level="alert";label="草勢注意";
+    items.push("草勢が弱めです。灌水量を増やす前に、根域の湿り・根傷み・低温・日照不足を確認してください。");
+  }else if(Number(latest.vigor)>=5){
+    level="alert";label="過繁茂注意";
+    items.push("草勢が強めです。摘葉量、着果負担、窒素供給の釣り合いを確認してください。");
+  }else{
+    items.push("草勢は中間域です。前回写真との差を見ながら、急な管理変更は避けます。");
+  }
+  if(env){
+    const vpd=calcVpd(env.temp_avg,env.humidity_avg);
+    if(vpd!==null&&vpd<0.4){
+      level="alert";label="多湿注意";
+      items.push(`概算飽差は${vpd}kPaです。結露、病害、蒸散不足を確認してください。`);
+    }else if(vpd!==null&&vpd>1.5){
+      level="alert";label="乾燥注意";
+      items.push(`概算飽差は${vpd}kPaです。吸水負担と灌水タイミングを確認してください。`);
+    }else{
+      items.push(`概算飽差は${vpd}kPaで、平均値としては極端ではありません。`);
+    }
+  }else{
+    items.push("環境データが未取込です。気温・湿度・日射の実感を記録に残してください。");
+  }
+  if(op){
+    if(numberOrZero(op.harvest)>0)items.push(`今日の収穫 ${numberOrZero(op.harvest).toFixed(1)}kgを記録済みです。草勢と収量の両方を見て明日の負担を判断します。`);
+    if(numberOrZero(op.irrigation)>0)items.push(`灌水合計 ${numberOrZero(op.irrigation)}分・${numberOrZero(op.irrigation_count)}回を記録済みです。`);
+  }else{
+    items.push("今日の収穫量・灌水・施肥実績を入力すると、判断精度が上がります。");
+  }
+  return {level,label,items:items.slice(0,4)};
+}
+function operationCard(o){
+  return `<article class="record">
+    <div class="record-head">
+      <div><strong>${esc(o.date)}｜${esc(o.house)}</strong><p class="meta">収穫 ${numberOrZero(o.harvest).toFixed(1)}kg</p></div>
+      <button class="delete-btn" data-op-delete="${o.id}">削除</button>
+    </div>
+    <div class="op-tags">
+      <span>灌水 ${numberOrZero(o.irrigation)}分</span>
+      <span>${numberOrZero(o.irrigation_count)}回</span>
+      ${numberOrZero(o.nitrogen)?`<span>窒素 ${numberOrZero(o.nitrogen)}kg</span>`:""}
+    </div>
+    ${o.fertilizer?`<p><b>施肥：</b>${esc(o.fertilizer)}</p>`:""}
+    ${o.memo?`<p><b>判断：</b>${esc(o.memo)}</p>`:""}
+  </article>`;
+}
+function renderCenter(){
+  const k=operationKpis();
+  $("centerKpis").innerHTML=`
+    <div class="metric"><span>今日の収穫</span><strong>${k.todayHarvest.toFixed(1)}kg</strong></div>
+    <div class="metric"><span>直近7日収穫</span><strong>${k.weekHarvest.toFixed(1)}kg</strong></div>
+    <div class="metric"><span>今月の収穫</span><strong>${k.monthHarvest.toFixed(1)}kg</strong></div>
+    <div class="metric"><span>7日間灌水</span><strong>${k.weekIrrigation.toFixed(0)}分</strong></div>`;
+  $("centerScore").textContent=centerQualityScore();
+  const a=centerAdviceData();
+  $("centerRisk").className=`priority-level ${a.level}`;
+  $("centerRisk").textContent=a.label;
+  $("centerAdvice").innerHTML=`<ol>${a.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`;
+  const daily={};
+  operations.forEach(o=>daily[o.date]=(daily[o.date]||0)+numberOrZero(o.harvest));
+  const points=Object.entries(daily).sort((a,b)=>a[0].localeCompare(b[0])).slice(-14)
+    .map(([date,value])=>({date,value}));
+  const max=Math.max(10,...points.map(p=>p.value));
+  $("harvestChart").innerHTML=svgLineChart(points,{minY:0,maxY:Math.ceil(max/10)*10,label:"収穫量"});
+  $("operationList").innerHTML=operations.length?operations.map(operationCard).join(""):'<div class="empty">まだ実績がありません。</div>';
+  document.querySelectorAll("[data-op-delete]").forEach(b=>b.onclick=()=>{
+    if(!confirm("この実績を削除しますか？"))return;
+    operations=operations.filter(o=>o.id!==b.dataset.opDelete);saveOperations();renderAll();
+  });
+}
+function exportOperationsCsv(){
+  const headers=["日付","ハウス","収穫量kg","灌水分","灌水回数","窒素量","施肥メモ","判断メモ"];
+  const rows=operations.map(o=>[o.date,o.house,o.harvest,o.irrigation,o.irrigation_count,o.nitrogen,o.fertilizer,o.memo]);
+  const csv="\uFEFF"+[headers,...rows].map(r=>r.map(csvEscape).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=`HARUNO32_operations_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  URL.revokeObjectURL(a.href);
+}
+$("operationForm").onsubmit=e=>{
+  e.preventDefault();
+  const op={
+    id:crypto.randomUUID(),
+    date:$("opDate").value,
+    house:$("opHouse").value,
+    harvest:numberOrZero($("opHarvest").value),
+    irrigation:numberOrZero($("opIrrigation").value),
+    irrigation_count:numberOrZero($("opIrrigationCount").value),
+    nitrogen:numberOrZero($("opNitrogen").value),
+    fertilizer:$("opFertilizer").value.trim(),
+    memo:$("opMemo").value.trim(),
+    created_at:new Date().toISOString()
+  };
+  operations.unshift(op);saveOperations();
+  e.target.reset();$("opDate").value=new Date().toISOString().slice(0,10);
+  $("opStatus").textContent="実績を保存しました";$("opStatus").classList.add("show");
+  setTimeout(()=>$("opStatus").classList.remove("show"),3000);
+  renderAll();
+};
+$("exportOpsCsv").onclick=exportOperationsCsv;
+$("clearOps").onclick=()=>{
+  if(!operations.length)return;
+  if(confirm("この端末の栽培実績をすべて消去しますか？")){
+    operations=[];saveOperations();renderAll();
+  }
+};
 
 function formatDateJP(value){
   const d=new Date(value);
@@ -506,6 +662,7 @@ function renderHistory(){
 
 function renderAll(){
   renderEnvironment();
+  renderCenter();
   renderDashboardPlus();
   renderHome();
   $("analysisRecord").innerHTML=records.map(r=>`<option value="${r.id}">${r.record_date}｜${esc(r.house)}</option>`).join("")||"<option>記録なし</option>";

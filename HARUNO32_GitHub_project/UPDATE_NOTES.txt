@@ -1,9 +1,10 @@
-HARUNO32 v8.0.0
-- New default home screen: 今日の仕事
-- Automatic daily priority list from latest vigor, photos, analysis, and environment
-- Latest-vs-previous photo comparison for the same greenhouse
-- Click photos to enlarge
-- Honest 32-ton data-foundation score (not a fabricated achievement probability)
-- History filtering by greenhouse and keyword
-- Quick navigation for daily use
-- Keeps Supabase cloud sync, photo storage, analysis storage, SAWACHI CSV, backups, and vigor chart
+HARUNO32 v9.0.0
+- Adds AI栽培センター
+- Adds harvest, irrigation, irrigation count, nitrogen, fertilizer and decision logging
+- Adds today / 7-day / monthly harvest KPIs
+- Adds harvest trend chart
+- Adds data-quality score from daily record, two photos, AI analysis, operations and environment
+- Adds practical daily advice combining vigor, environment and operation records
+- Adds operations CSV export
+- Existing daily records, photos and AI analysis continue using Supabase
+- New v9 operations log is device-local in this build; this is stated in the UI

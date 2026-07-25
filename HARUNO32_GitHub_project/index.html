@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=8.0.0">
+  <link rel="stylesheet" href="styles.css?v=9.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -21,6 +21,7 @@
 <nav class="tabs">
   <button class="active" data-view="home">今日の仕事</button>
   <button data-view="entry">今日の記録</button>
+  <button data-view="center">栽培センター</button>
   <button data-view="dashboard">ダッシュボード</button>
   <button data-view="environment">SAWACHI</button>
   <button data-view="history">履歴</button>
@@ -153,6 +154,101 @@
   </div>
 </section>
 
+
+<section id="center" class="view">
+  <section class="card center-hero">
+    <div>
+      <p class="eyebrow">HARUNO32 AI CULTIVATION CENTER</p>
+      <h2>AI栽培センター</h2>
+      <p class="muted">収穫・灌水・施肥・草勢・環境を、今日の判断につなげます。</p>
+    </div>
+    <div class="score-orb">
+      <span>データ品質</span>
+      <strong id="centerScore">0</strong>
+      <small>/100</small>
+    </div>
+  </section>
+
+  <div id="centerKpis" class="metrics"></div>
+
+  <div class="center-grid">
+    <section class="card">
+      <div class="row-between">
+        <div>
+          <p class="eyebrow">TODAY'S AI VIEW</p>
+          <h2>今日のAI判断</h2>
+        </div>
+        <span id="centerRisk" class="priority-level">確認中</span>
+      </div>
+      <div id="centerAdvice" class="ai-advice"></div>
+    </section>
+
+    <section class="card">
+      <p class="eyebrow">QUICK INPUT</p>
+      <h2>今日の実績を入力</h2>
+      <form id="operationForm" class="operation-form">
+        <label>日付
+          <input id="opDate" type="date" required>
+        </label>
+        <label>ハウス
+          <select id="opHouse" required>
+            <option>南ハウス</option>
+            <option>北ハウス</option>
+            <option>両方</option>
+          </select>
+        </label>
+        <div class="input-pair">
+          <label>収穫量（kg）
+            <input id="opHarvest" type="number" min="0" step="0.1" placeholder="例：125.5">
+          </label>
+          <label>灌水合計（分）
+            <input id="opIrrigation" type="number" min="0" step="1" placeholder="例：50">
+          </label>
+        </div>
+        <div class="input-pair">
+          <label>灌水回数
+            <input id="opIrrigationCount" type="number" min="0" step="1" placeholder="例：4">
+          </label>
+          <label>窒素量メモ（kg/日など）
+            <input id="opNitrogen" type="number" min="0" step="0.01" placeholder="任意">
+          </label>
+        </div>
+        <label>施肥・補正メモ
+          <textarea id="opFertilizer" placeholder="例：A液通常、B液10%減、硝酸態窒素を意識"></textarea>
+        </label>
+        <label>今日の判断・結果
+          <textarea id="opMemo" placeholder="例：午前の日射が弱く、午後の灌水を1回減らした"></textarea>
+        </label>
+        <button class="primary" type="submit">実績を保存</button>
+        <p id="opStatus" class="status"></p>
+      </form>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="row-between">
+      <div>
+        <p class="eyebrow">7 DAY TREND</p>
+        <h2>収穫量の推移</h2>
+      </div>
+      <button id="exportOpsCsv" class="secondary compact">実績CSVを書き出す</button>
+    </div>
+    <div id="harvestChart"></div>
+  </section>
+
+  <section class="card">
+    <div class="row-between">
+      <div>
+        <p class="eyebrow">OPERATIONS LOG</p>
+        <h2>栽培実績履歴</h2>
+      </div>
+      <button id="clearOps" class="secondary compact">実績を全消去</button>
+    </div>
+    <p class="muted">このv9では実績データはこの端末に保存されます。日次記録・写真・分析は従来どおりSupabase同期です。</p>
+    <div id="operationList" class="record-list"></div>
+  </section>
+</section>
+
 <section id="dashboard" class="view">
   <div id="metrics" class="metrics"></div>
   <div class="dashboard-grid">
@@ -270,7 +366,7 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v8.0.0｜今日の仕事・写真比較・履歴検索・クラウド同期・SAWACHI CSV</footer>
+<footer class="app-footer">HARUNO32 v9.0.0｜AI栽培センター・収穫・灌水・施肥・写真比較・クラウド同期</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
@@ -285,6 +381,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=8.0.0"></script>
+<script src="app.js?v=9.0.0"></script>
 </body>
 </html>
