@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1510">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=22.0.0">
+  <link rel="stylesheet" href="styles.css?v=23.0.0">
   <title>HARUNO32</title>
 </head>
 <body class="product-11">
@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="header-actions">
-    <span class="product-edition">SIGNATURE / PROFIT</span>
+    <span class="product-edition">SIGNATURE / DECISION</span>
     <div id="syncBadge" class="sync-badge">接続確認中</div>
   </div>
 </header>
@@ -53,6 +53,21 @@
       <div class="decision-orbit" aria-label="本日の判断スコア">
         <div class="orbit-ring"><strong id="pulseScore">--</strong><span>DECISION<br>SCORE</span></div>
         <div id="profitMode" class="profit-mode">CALCULATING</div>
+      </div>
+    </div>
+
+    <div class="mode-dock" aria-label="本日の判断モード">
+      <div class="mode-spectrum">
+        <span data-mode-chip="BOOST"><b>BOOST</b><small>伸ばす</small></span>
+        <span data-mode-chip="FLOW"><b>FLOW</b><small>維持</small></span>
+        <span data-mode-chip="RESET"><b>RESET</b><small>整える</small></span>
+        <span data-mode-chip="SHIELD"><b>SHIELD</b><small>守る</small></span>
+        <span data-mode-chip="WAIT"><b>WAIT</b><small>動かない</small></span>
+      </div>
+      <div class="mode-explain">
+        <div><span>WHY</span><strong id="modeReason">判断材料を確認しています</strong></div>
+        <div><span>CONFIDENCE</span><strong id="modeConfidence">—</strong></div>
+        <div><span>EXPECTED EFFECT</span><strong id="modeExpected">—</strong></div>
       </div>
     </div>
 

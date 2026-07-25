@@ -1,0 +1,8 @@
+HARUNO32 SIGNATURE / DECISION 更新手順
+1. ZIPを解凍します。
+2. GitHubの既存ファイルをすべて上書きします。
+3. Commit changesを押します。
+4. NetlifyがPublishedになるまで待ちます。
+5. アプリURL末尾に ?v=23 を付けて開きます。
+
+追加SQLは不要です。

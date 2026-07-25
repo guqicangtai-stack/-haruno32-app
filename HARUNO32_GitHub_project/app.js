@@ -869,6 +869,27 @@ function renderCommandPhotos(latest){
   el.innerHTML=photos.length?photos.map((p,i)=>`<figure><img class="zoom-photo" src="${photoSrc(p)}" alt="本日の栽培写真${i+1}"><figcaption>${i===0?"① 代表株":i===1?"② 気になる箇所":`写真${i+1}`}</figcaption></figure>`).join(""):'<div class="empty">本日の写真はまだありません。今日の記録から追加できます。</div>';
   el.querySelectorAll('.zoom-photo').forEach(img=>img.onclick=()=>window.open(img.src,'_blank','noopener'));
 }
+function operatingModeData({pulse,latest,env,target,decision,op}){
+  const hasPlant=!!latest, hasEnv=!!env;
+  const vigor=hasPlant?numberOrZero(latest.vigor):0;
+  const severeAlert=(decision.alerts||[]).some(a=>a.level==="alert");
+  let key="FLOW", title="今日は、流れを保つ。", statement="通常管理で十分です。余計な変更を増やしません。", voice="農場は安定しています。いつもの精度を保てば十分です。", reason="草勢・環境・収量ペースに大きな乱れがありません。", expected="追加作業 0〜1件", confidence=74;
+  if(!hasPlant&&!hasEnv){
+    key="WAIT";title="今日は、決めつけない。";statement="判断材料が足りません。まず30秒の記録だけで十分です。";voice="データがない日は、余計に動かない。それが最も安い判断です。";reason="植物記録とSAWACHIデータが未入力です。";expected="無駄な作業を回避";confidence=38;
+  }else if(severeAlert||pulse<58){
+    key="SHIELD";title="今日は、損失を止める。";statement="収量を追うより、異常の拡大を防ぐ日です。";voice="一つの異常を早く見つける。それだけで利益を守れます。";reason=decision.alerts?.[0]?.text||"環境または草勢に強い警戒サインがあります。";expected="品質・収量損失を抑制";confidence=Math.min(94,68+(hasPlant?10:0)+(hasEnv?10:0));
+  }else if(vigor>0&&vigor<=2){
+    key="RESET";title="今日は、根と草勢を整える。";statement="作業を増やさず、回復を妨げる要因を一つだけ外します。";voice="今日は伸ばす日ではありません。明日の余力を作る日です。";reason=`草勢 ${vigor}/5。根域・水分・夜温の確認を優先します。`;expected="回復ロスを最小化";confidence=Math.min(92,70+(hasEnv?12:0));
+  }else if(pulse>=86&&hasPlant&&hasEnv&&!severeAlert){
+    key="BOOST";title="今日は、伸ばせる。";statement="条件がそろっています。効く作業だけを早く実行します。";voice="農場は応えられます。仕事量ではなく、タイミングで伸ばしてください。";reason=`草勢 ${vigor}/5、環境スコア良好、32トンペース ${target.pct.toFixed(1)}%。`;expected="収量機会を取りこぼさない";confidence=Math.min(96,82+(target.pct>0?6:0));
+  }else if(pulse<68){
+    key="RESET";title="今日は、一つだけ整える。";statement="複数の条件を同時に変えず、最も効く調整に絞ります。";voice="少し疲れています。今日の仕事を絞れば、明日に余力を残せます。";reason=decision.alerts?.[0]?.text||"草勢・環境・収量ペースのバランスが低下しています。";expected="管理のぶれを縮小";confidence=Math.min(88,64+(hasPlant?10:0)+(hasEnv?10:0));
+  }else if(op&&numberOrZero(op.harvest)>0&&pulse>=75){
+    key="FLOW";title="今日は、増やさない。";statement="流れは良好です。予定外の作業を足さず、再現します。";voice="うまくいっている日は、触りすぎない。それが利益になります。";reason="本日の実績が入力済みで、強い警戒サインがありません。";expected="作業時間を抑えて維持";confidence=Math.min(92,78+(hasEnv?8:0));
+  }
+  return {key,title,statement,voice,reason,expected,confidence};
+}
+
 function renderHome(){
   const today=new Date().toISOString().slice(0,10), d=new Date();
   const latest=records[0], op=todayOperation(), env=latestEnvironmentDay(), phase=cropPhase(today), target=targetProgressData(), decision=decisionEngineData(), foundation=foundationData();
@@ -895,16 +916,20 @@ function renderHome(){
     const statement=pulse>=88?"今日は、少ない手数で収量を伸ばせる日です。":pulse>=75?"流れは良好です。余計な作業を増やさず、精度を保ちます。":pulse>=62?"今日は整える日です。攻める作業は一つに絞ります。":"今日は守る日です。損失を防ぐ確認だけに集中します。";
     $("pulseStatement").textContent=statement;
   }
-  const profitMode=pulse>=88?"PUSH":pulse>=75?"CRUISE":pulse>=62?"HOLD":"PROTECT";
-  if($("profitMode")) $("profitMode").textContent=profitMode;
-  if($("profitDecision")) $("profitDecision").textContent=pulse>=88?"今日は、攻める。":pulse>=75?"今日は、増やさない。":pulse>=62?"今日は、一つだけ整える。":"今日は、損を止める。";
-  const fieldVoice=pulse>=88?"農場は応えられます。仕事を増やすより、効く作業を早く。":pulse>=75?"状態は安定。いま必要なのは、追加作業ではなく観察の精度です。":pulse>=62?"少し疲れています。今日の仕事を絞れば、明日に余力を残せます。":"無理に動かさないでください。異常の芽を一つ見つければ十分です。";
-  if($("fieldVoice")) $("fieldVoice").textContent=fieldVoice;
+  const mode=operatingModeData({pulse,latest,env,target,decision,op});
+  if($("profitMode")) $("profitMode").textContent=mode.key;
+  if($("profitDecision")) $("profitDecision").textContent=mode.title;
+  if($("pulseStatement")) $("pulseStatement").textContent=mode.statement;
+  if($("fieldVoice")) $("fieldVoice").textContent=mode.voice;
+  if($("modeReason")) $("modeReason").textContent=mode.reason;
+  if($("modeConfidence")) $("modeConfidence").textContent=`${mode.confidence}%`;
+  if($("modeExpected")) $("modeExpected").textContent=mode.expected;
+  document.querySelectorAll('[data-mode-chip]').forEach(el=>el.classList.toggle('active',el.dataset.modeChip===mode.key));
   const recipe=FERTILIZER_MASTER[phase.key]||FERTILIZER_MASTER.autumn;
   $("fertilizerSeason").textContent=recipe.label;
   $("fertilizerRecipe").innerHTML=`<div class="fertilizer-name"><strong>${recipe.name}</strong><span>${recipe.ratio}</span></div><div class="fertilizer-lines"><p><b>A液：</b>${esc(recipe.a)}</p><p><b>B液：</b>${esc(recipe.b)}</p></div><div class="fertilizer-cost"><span>標準材料費</span><strong>${recipe.cost?recipe.cost.toLocaleString()+"円":"—"}</strong></div><p class="muted">${esc(recipe.note)}</p>`;
   $("commandRisk").className=`priority-level ${decision.level}`;$("commandRisk").textContent=decision.label;
-  $("commandAiComment").innerHTML=`<p>${esc(decision.moves[0]||"今日の記録を確認してください。")}</p><p>${esc(decision.alerts[0]?.text||"大きな急変は確認されていません。")}</p>`;
+  $("commandAiComment").innerHTML=`<p><b>${esc(mode.key)}：</b>${esc(decision.moves[0]||"今日の記録を確認してください。")}</p><p>${esc(mode.reason)}</p>`;
   $("commandEnvironment").innerHTML=env?`<div class="env-grid command-env"><div><span>平均気温</span><b>${val(env.temp_avg,"℃")}</b></div><div><span>平均湿度</span><b>${val(env.humidity_avg,"%")}</b></div><div><span>CO₂</span><b>${val(env.co2_avg,"ppm")}</b></div><div><span>日射合計</span><b>${val(env.solar_sum)}</b></div></div><p class="muted">${env.date}｜${env.house}</p>`:'<div class="empty">SAWACHI CSVを取り込むと、ここに最新環境が表示されます。</div>';
   $("commandWork").innerHTML=latest?`<div class="compact-record"><strong>${esc(latest.record_date)}｜${esc(latest.house)}</strong><span class="vigor-pill">草勢 ${latest.vigor}/5</span><p>${esc(latest.work)}</p><p class="meta">${esc(latest.notes)}</p></div>`:'<div class="empty">本日の作業記録はまだありません。</div>';
   $("commandTop3").innerHTML=decision.moves.slice(0,3).map((x,i)=>`<div class="move-item"><b>${i+1}</b><span>${esc(x)}</span></div>`).join("");
