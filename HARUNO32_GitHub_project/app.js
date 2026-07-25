@@ -3,7 +3,7 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="16.0.0";
+const APP_VERSION="17.0.0";
 const PEST_KEY="haruno32_pest_records_v1";
 const LEARNING_KEY="haruno32_learning_notes_v1";
 const FAILURE_KEY="haruno32_failure_records_v1";
@@ -1226,8 +1226,87 @@ if($("memoryToday"))$("memoryToday").addEventListener("click",()=>{$("memoryDate
 if($("memoryLatest"))$("memoryLatest").addEventListener("click",()=>{const dates=allMemoryDates();if(dates.length)$("memoryDate").value=dates[0];renderMemory()});
 if($("copyMemoryReport"))$("copyMemoryReport").addEventListener("click",()=>copyTextSafe(memoryReportText(),"この日の栽培カルテをコピーしました"));
 
+
+// v17 AI農場長：保存済みデータを使ったルールベース判断
+const MANAGER_ANSWERS_KEY="haruno32_manager_answers_v1";
+function clampScore(n){return Math.max(0,Math.min(100,Math.round(n)))}
+function latestDaily(){return records[0]||null}
+function latestOperation(){return [...operations].sort((a,b)=>String(b.date||b.operation_date||"").localeCompare(String(a.date||a.operation_date||"")))[0]||null}
+function latestPest(){return [...pestRecords].sort((a,b)=>String(b.spray_date||"").localeCompare(String(a.spray_date||"")))[0]||null}
+function managerAnswers(){try{return JSON.parse(localStorage.getItem(MANAGER_ANSWERS_KEY)||"{}")}catch{return {}}}
+function saveManagerAnswer(key,value){const all=managerAnswers(),today=new Date().toISOString().slice(0,10);all[today]=all[today]||{};all[today][key]=value;localStorage.setItem(MANAGER_ANSWERS_KEY,JSON.stringify(all))}
+function managerData(){
+  const daily=latestDaily(),op=latestOperation(),env=latestEnvironmentDay(),pest=latestPest(),target=targetProgressData(),decision=decisionEngineData();
+  const vigor=Number(daily?.vigor||0);
+  const vigorScore=daily?clampScore(100-Math.abs(vigor-3.5)*28):0;
+  let rootScore=daily?70:35; const rootReasons=[];
+  if(vigor>=3&&vigor<=4){rootScore+=12;rootReasons.push("草勢が適正域")}else if(vigor&&vigor<=2){rootScore-=18;rootReasons.push("草勢低下を確認")}else if(vigor>=5){rootScore-=8;rootReasons.push("過繁茂に注意")}
+  if((daily?.photos||[]).length>=2){rootScore+=6;rootReasons.push("標準写真あり")}
+  if(op&&Number(op.irrigation||0)>0){rootScore+=6;rootReasons.push("灌水記録あり")}else rootReasons.push("灌水記録不足");
+  if(env){const vpd=calcVpd(env.temp_avg,env.humidity_avg);if(vpd!==null&&vpd>=0.4&&vpd<=1.5){rootScore+=6;rootReasons.push("飽差は概ね適正")}else if(vpd!==null){rootScore-=10;rootReasons.push("飽差が注意域")}}
+  rootScore=clampScore(rootScore);
+  const yieldScore=target.total>0?clampScore(target.pct*3):0;
+  let pestScore=80,pestReason="防除履歴を継続確認";
+  if(!pest){pestScore=55;pestReason="防除記録なし"}else{
+    const same=pestRecords.filter(x=>x.id!==pest.id&&x.target_pest===pest.target_pest).sort((a,b)=>String(b.spray_date).localeCompare(String(a.spray_date)))[0];
+    if(same&&normalizeGroup(same.mode_group)===normalizeGroup(pest.mode_group)){pestScore=45;pestReason="同一系統の連用を確認"}else{pestScore=88;pestReason="直近は系統重複なし"}
+  }
+  let risk=20;
+  if(vigor&&vigor<=2)risk+=25;if(vigor>=5)risk+=12;
+  if(env){const vpd=calcVpd(env.temp_avg,env.humidity_avg);if(vpd!==null&&(vpd<0.4||vpd>1.5))risk+=20;if(Number(env.humidity_avg)>=90)risk+=15}
+  if((daily?.photos||[]).length<2)risk+=10;if(pestScore<60)risk+=15;
+  risk=clampScore(risk);
+  const overall=clampScore((vigorScore+rootScore+yieldScore+pestScore+(100-risk))/5);
+  return {daily,op,env,pest,target,decision,vigorScore,rootScore,rootReasons,yieldScore,pestScore,pestReason,risk,overall};
+}
+function managerBriefText(){
+  const d=managerData(),today=new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"short"});
+  return `【HARUNO32 AI農場長｜${today}】\n総合評価：${d.overall}点\n根の健康推定：${d.rootScore}点\n収量ペース：${d.yieldScore}点\nリスク：${d.risk}点\n\n今日の優先順位\n${d.decision.moves.map((x,i)=>`${i+1}. ${x}`).join("\n")}`;
+}
+function renderFarmManager(){
+  if(!$("managerBrief"))return;
+  const d=managerData();
+  $("managerOverallBadge").textContent=`総合 ${d.overall}点`;
+  $("managerOverallBadge").className=`phase-badge ${d.overall>=75?"autumn":d.overall>=55?"winter":"off"}`;
+  $("managerVigorScore").textContent=d.daily?`${d.vigorScore}点`:"—";$("managerVigorReason").textContent=d.daily?`草勢 ${d.daily.vigor}/5｜${d.daily.record_date}`:"日次記録が必要";
+  $("managerRootScore").textContent=`${d.rootScore}点`;$("managerRootReason").textContent=d.rootReasons.slice(0,2).join("・");
+  $("managerYieldScore").textContent=`${d.yieldScore}点`;$("managerYieldReason").textContent=`32トン進捗 ${d.target.pct.toFixed(1)}%`;
+  $("managerPestScore").textContent=`${d.pestScore}点`;$("managerPestReason").textContent=d.pestReason;
+  $("managerRiskScore").textContent=`${d.risk}点`;$("managerRiskReason").textContent=d.risk<=30?"大きな異常なし":d.risk<=55?"注意して観察":"優先確認が必要";
+  const alert=d.decision.alerts[0]?.text||"大きな急変は確認されていません。";
+  $("managerBrief").innerHTML=`<p><b>総合評価 ${d.overall}点。</b> ${esc(alert)}</p><p>根の健康は地上部・灌水・環境記録から ${d.rootScore}点と推定しています。実際の根を直接測定した値ではありません。</p>`;
+  $("managerMoves").innerHTML=d.decision.moves.map((x,i)=>`<div class="move-item"><b>${i+1}</b><span>${esc(x)}</span></div>`).join("");
+  const today=new Date().toISOString().slice(0,10),answers=managerAnswers()[today]||{};
+  const qs=[
+    ["wilt","午後の萎れはありましたか？"],
+    ["pest","病害虫の新しい兆候はありましたか？"],
+    ["vigor","草勢は前回より強く感じますか？"]
+  ];
+  $("managerQuestions").innerHTML=qs.map(([key,label])=>`<div class="manager-question"><span>${label}</span><div><button type="button" data-manager-answer="${key}:yes" class="${answers[key]==="yes"?"selected":""}">はい</button><button type="button" data-manager-answer="${key}:no" class="${answers[key]==="no"?"selected":""}">いいえ</button></div></div>`).join("");
+  $("managerQuestions").querySelectorAll("[data-manager-answer]").forEach(btn=>btn.addEventListener("click",()=>{const [key,val]=btn.dataset.managerAnswer.split(":");saveManagerAnswer(key,val);$("managerQuestionStatus").textContent="回答を保存しました";$("managerQuestionStatus").classList.add("show");renderFarmManager()}));
+  const envOpinion=d.env?`平均温度 ${val(d.env.temp_avg,"℃")}、湿度 ${val(d.env.humidity_avg,"%")}。${d.risk>45?"環境変化を優先確認。":"大きな逸脱は現時点で未検出。"}`:"SAWACHIデータがないため、環境判断は保留。";
+  $("managerMeeting").innerHTML=`
+    <article><strong>栽培AI</strong><p>${d.daily?`草勢 ${d.daily.vigor}/5。根の健康推定 ${d.rootScore}点。`:"今日の草勢記録を待っています。"}</p></article>
+    <article><strong>環境AI</strong><p>${esc(envOpinion)}</p></article>
+    <article><strong>防除AI</strong><p>${esc(d.pestReason)}。実施時は必ず最新の農薬ラベルを確認。</p></article>
+    <article class="manager-chair"><strong>農場長AI</strong><p>${esc(d.decision.moves[0]||"今日の記録を入力してください。")}</p></article>`;
+}
+function managerChatAnswer(q){
+  const d=managerData(),s=String(q||"").trim();if(!s)return "質問を入力してください。";
+  if(/灌水|水/.test(s)){const irr=Number(d.op?.irrigation||0);return `直近の灌水記録は ${irr||"未入力"}${irr?"分":""}です。根の健康推定は ${d.rootScore}点、総合リスクは ${d.risk}点です。増減を決める前に、日射・午後の萎れ・根域水分を確認してください。`;}
+  if(/防除|薬剤|農薬|散布/.test(s)){return d.pest?`直近の防除は ${d.pest.spray_date}、対象は「${d.pest.target_pest}」、薬剤は「${d.pest.product_name}」、系統は「${d.pest.mode_group||"未記録"}」です。${d.pestReason}。最新ラベルの適用・希釈・回数・収穫前日数を必ず確認してください。`:"防除記録はまだありません。";}
+  if(/収穫|32トン|目標/.test(s)){return `現在の累計進捗は ${d.target.pct.toFixed(1)}%、収量ペーススコアは ${d.yieldScore}点です。単純な進捗値なので、今後は日別収量データが増えるほど判断が安定します。`;}
+  if(/草勢|根/.test(s)){return d.daily?`最新草勢は ${d.daily.vigor}/5、根の健康推定は ${d.rootScore}点です。根の点数は直接測定ではなく、草勢・写真・灌水・環境からの推定です。理由：${d.rootReasons.join("、")}。`:"草勢記録がないため判定できません。";}
+  if(/今日|何を|優先/.test(s)){return `今日の最優先は「${d.decision.moves[0]||"日次記録"}」です。次に「${d.decision.moves[1]||"写真確認"}」を行ってください。`;}
+  return `保存データから直接答えられるのは、草勢・根の健康推定・灌水・収穫・防除・今日の優先順位です。質問例：「前回の防除は？」「今日は何を優先？」「根の状態は？」`;
+}
+if($("copyManagerBrief"))$("copyManagerBrief").addEventListener("click",()=>copyTextSafe(managerBriefText(),"AI農場長ブリーフをコピーしました"));
+if($("managerChatSend"))$("managerChatSend").addEventListener("click",()=>{const input=$("managerChatInput"),q=input.value.trim();if(!q)return;const answer=managerChatAnswer(q),box=$("managerChat");box.insertAdjacentHTML("afterbegin",`<div class="chat-pair"><p class="chat-user">${esc(q)}</p><p class="chat-ai">${esc(answer)}</p></div>`);input.value=""});
+if($("managerChatInput"))$("managerChatInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("managerChatSend").click()}});
+
 function renderAll(){
   renderPest();
+  renderFarmManager();
   renderMaster();
   renderMemory();
   renderEnvironment();

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=16.0.0">
+  <link rel="stylesheet" href="styles.css?v=17.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -20,6 +20,7 @@
 
 <nav class="tabs">
   <button class="active" data-view="home">司令室</button>
+  <button data-view="farmmanager">AI農場長</button>
   <button data-view="entry">今日の記録</button>
   <button data-view="center">栽培センター</button>
   <button data-view="dashboard">分析</button>
@@ -89,6 +90,57 @@
     <section class="card"><p class="eyebrow">NEXT MILESTONES</p><h2>今後の予定</h2><div id="commandSchedule"></div></section>
     <section class="card"><p class="eyebrow">DATA FOUNDATION</p><h2>判断データ蓄積</h2><div class="row-between"><span>充足度</span><strong id="foundationScore" class="foundation-score">0%</strong></div><div id="foundationBars" class="foundation-bars compact-foundation"></div></section>
   </div>
+</section>
+
+
+<section id="farmmanager" class="view">
+  <section class="card manager-hero">
+    <div>
+      <p class="eyebrow">HARUNO32 AI FARM MANAGER</p>
+      <h2>AI農場長</h2>
+      <p class="muted">記録・環境・収穫・防除をまとめ、今日の優先順位を理由付きで整理します。</p>
+    </div>
+    <span id="managerOverallBadge" class="phase-badge">判定中</span>
+  </section>
+
+  <div class="manager-score-grid">
+    <article class="manager-score-card"><span>草勢</span><strong id="managerVigorScore">—</strong><small id="managerVigorReason">記録待ち</small></article>
+    <article class="manager-score-card"><span>根の健康推定</span><strong id="managerRootScore">—</strong><small id="managerRootReason">地上部データから推定</small></article>
+    <article class="manager-score-card"><span>収量ペース</span><strong id="managerYieldScore">—</strong><small id="managerYieldReason">目標設定から計算</small></article>
+    <article class="manager-score-card"><span>防除安全度</span><strong id="managerPestScore">—</strong><small id="managerPestReason">ローテーション確認</small></article>
+    <article class="manager-score-card"><span>総合リスク</span><strong id="managerRiskScore">—</strong><small id="managerRiskReason">低いほど良好</small></article>
+  </div>
+
+  <div class="manager-grid">
+    <section class="card">
+      <div class="row-between"><div><p class="eyebrow">MORNING BRIEF</p><h2>本日の農場長判断</h2></div><button id="copyManagerBrief" class="secondary compact">コピー</button></div>
+      <div id="managerBrief" class="ai-advice"></div>
+      <h3>今日の優先順位</h3>
+      <div id="managerMoves" class="move-list"></div>
+    </section>
+
+    <section class="card">
+      <p class="eyebrow">DAILY QUESTIONS</p><h2>今日の確認3問</h2>
+      <p class="muted">答えはこの端末に保存され、今日の判断メモに反映されます。</p>
+      <div id="managerQuestions" class="manager-questions"></div>
+      <p id="managerQuestionStatus" class="status"></p>
+    </section>
+  </div>
+
+  <section class="card">
+    <p class="eyebrow">AI MEETING</p><h2>本日のAI会議</h2>
+    <div id="managerMeeting" class="manager-meeting"></div>
+  </section>
+
+  <section class="card">
+    <p class="eyebrow">ASK YOUR FARM</p><h2>農場に質問する</h2>
+    <p class="muted">現在保存されているHARUNO32データを検索して回答します。外部AIへの送信は行いません。</p>
+    <div class="manager-chat-input">
+      <input id="managerChatInput" type="text" placeholder="例：今日は灌水を増やす？／前回の防除は？">
+      <button id="managerChatSend" class="primary" type="button">質問する</button>
+    </div>
+    <div id="managerChat" class="manager-chat" aria-live="polite"></div>
+  </section>
 </section>
 
 <section id="entry" class="view">
@@ -640,7 +692,7 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v15.0.0｜栽培マスターAI・学習ノート・失敗データベース</footer>
+<footer class="app-footer">HARUNO32 v17.0.0｜AI農場長・根の健康推定・農場内検索</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
@@ -655,6 +707,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=12.0.0"></script>
+<script src="app.js?v=17.0.0"></script>
 </body>
 </html>

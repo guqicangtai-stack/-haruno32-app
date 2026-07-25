@@ -348,3 +348,15 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 
 /* v16 Farm Memory */
 .memory-controls{margin-bottom:16px}.memory-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.memory-kpis{margin-top:16px}.memory-summary-line{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0 14px;border-bottom:1px solid var(--line,#d8e1da);margin-bottom:10px}.memory-summary-line span{color:var(--muted,#66756c);font-size:.9rem}.memory-timeline{display:grid;gap:10px}.memory-event{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line,#d8e1da)}.memory-event>span{font-weight:700;color:#24563a}.memory-event p{margin:0;white-space:pre-wrap}.record-list .record{margin-bottom:10px}@media(max-width:720px){.memory-filter-grid{grid-template-columns:1fr}.memory-event{grid-template-columns:1fr;gap:4px}.memory-summary-line{align-items:flex-start;flex-direction:column}}
+
+
+/* v17 AI農場長 */
+.manager-hero{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.manager-score-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0}
+.manager-score-card{background:var(--card,#fff);border:1px solid #d9e5dc;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.manager-score-card span{font-size:.86rem;color:#5c6f62}.manager-score-card strong{font-size:1.65rem;color:#24563a}.manager-score-card small{color:#66776c}
+.manager-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}.manager-questions{display:grid;gap:12px}.manager-question{border:1px solid #dce8df;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px}.manager-question div{display:flex;gap:8px}.manager-question button{border:1px solid #aac1b0;background:#fff;border-radius:999px;padding:7px 12px}.manager-question button.selected{background:#24563a;color:#fff;border-color:#24563a}
+.manager-meeting{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.manager-meeting article{border:1px solid #dce8df;border-radius:14px;padding:14px;background:#fbfdfb}.manager-meeting article strong{color:#24563a}.manager-meeting .manager-chair{background:#eef7f0;border-color:#8db39a}
+.manager-chat-input{display:grid;grid-template-columns:1fr auto;gap:10px}.manager-chat{display:grid;gap:10px;margin-top:14px}.chat-pair{border-top:1px solid #e1e9e3;padding-top:10px}.chat-user{font-weight:700;margin-bottom:6px}.chat-ai{background:#f1f7f3;border-radius:12px;padding:12px;margin:0}
+@media(max-width:900px){.manager-score-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.manager-grid{grid-template-columns:1fr}.manager-meeting{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.manager-hero{align-items:flex-start;flex-direction:column}.manager-score-grid,.manager-meeting{grid-template-columns:1fr}.manager-question{align-items:flex-start;flex-direction:column}.manager-chat-input{grid-template-columns:1fr}}
