@@ -1,13 +1,14 @@
 const LOCAL_KEY="haruno32_records_v1";
 const ENV_KEY="haruno32_environment_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
-const DEFAULT_SUPABASE_KEY="sb_publishable_pswWBc9LE6xfvrvHCpstvg_IDMkfSi-";
-const APP_VERSION="6.0.0";
+const DEFAULT_SUPABASE_KEY="";
+const APP_VERSION="6.1.0";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
   if(!savedUrl) localStorage.setItem("haruno32_supabase_url",DEFAULT_SUPABASE_URL);
-  if(!savedKey) localStorage.setItem("haruno32_supabase_key",DEFAULT_SUPABASE_KEY);
+  // V5/V6に入っていた途中で切れたキーを自動削除します。
+  if(savedKey==="sb_publishable_pswWBc9LE6xfvrvHCpstvg_IDMkfSi-") localStorage.removeItem("haruno32_supabase_key");
 }
 ensureDefaultConnection();
 
@@ -46,28 +47,52 @@ function initSupabase(){
   $("supabaseKey").value=s.key;
   updateBadge();
 }
+
+function maskKey(key=""){
+  if(!key)return "未設定";
+  if(key.length<=16)return `${key.slice(0,5)}…（${key.length}文字）`;
+  return `${key.slice(0,14)}…${key.slice(-6)}（${key.length}文字）`;
+}
+function showConnectionDiagnostic(message="",kind="info"){
+  const box=$("connectionDiagnostic");
+  if(!box)return;
+  const s=settings();
+  box.className=`diagnostic ${kind}`;
+  box.innerHTML=`
+    <strong>${message}</strong>
+    <div>URL：${s.url||"未設定"}</div>
+    <div>キー：${maskKey(s.key)}</div>
+    <div>キー種別：${s.key.startsWith("sb_publishable_")?"Publishable key":s.key.startsWith("eyJ")?"Legacy anon key":"未判定"}</div>
+  `;
+}
+
 async function connectionCheck(){
   const s=settings();
   if(!s.url)throw new Error("Supabase URLが未入力です");
   if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(s.url)){
-    throw new Error("URLの形式が違います。末尾の /rest/v1 は削除してください");
+    throw new Error("URLの形式が違います。Project URLだけを入力してください");
   }
-  if(!s.key || !(s.key.startsWith("sb_publishable_") || s.key.startsWith("eyJ"))){
-    throw new Error("Publishable keyが途中で切れているか、種類が違います");
+  if(!s.key)throw new Error("Publishable keyが未入力です");
+  if(!(s.key.startsWith("sb_publishable_") || s.key.startsWith("eyJ"))){
+    throw new Error("キーの種類が違います。Publishable keyまたはLegacy anon keyを使用してください");
   }
+  if(s.key.endsWith("-")){
+    throw new Error("キーが途中で切れています。Supabaseのコピーアイコンで全文をコピーしてください");
+  }
+
   const headers={apikey:s.key};
-  // Legacy anon keys are JWTs and may be sent as Bearer tokens.
-  // New sb_publishable keys are opaque and must not be treated as JWTs.
   if(s.key.startsWith("eyJ")) headers.Authorization=`Bearer ${s.key}`;
+
   const response=await fetch(`${s.url}/rest/v1/daily_records?select=id&limit=1`,{headers});
   const body=await response.text();
+
   if(!response.ok){
-    let message=body;
+    let detail=body;
     try{
       const parsed=JSON.parse(body);
-      message=parsed.message||parsed.msg||parsed.error||body;
-    }catch{}
-    throw new Error(`${response.status}: ${message}`);
+      detail=parsed.message||parsed.msg||parsed.error||body;
+    }catch(_){}
+    throw new Error(`${response.status}: ${detail}`);
   }
   return true;
 }
@@ -83,12 +108,14 @@ async function updateBadge(showMessage=false){
     b.textContent=`オンライン同期｜v${APP_VERSION}`;
     b.classList.add("online");
     b.classList.remove("error");
+    showConnectionDiagnostic("接続成功：スマホとPCで同じクラウドを使用します","success");
     if(showMessage)alert("接続成功：オンライン同期になりました");
     return true;
   }catch(e){
     b.textContent=`接続エラー｜v${APP_VERSION}`;
     b.classList.add("error");
     b.classList.remove("online");
+    showConnectionDiagnostic(`接続失敗：${e.message}`,"error");
     if(showMessage)alert(`接続できませんでした\n\n${e.message}`);
     const fs=$("formStatus");
     if(fs){fs.textContent=`接続エラー：${e.message}`;fs.classList.add("show");}
@@ -258,11 +285,12 @@ function recordHTML(r,actions){
 $("refreshBtn").onclick=async()=>{await loadRecords();renderAll()};
 $("saveSettings").onclick=async()=>{
   const url=normalizeSupabaseUrl($("supabaseUrl").value);
-  const key=$("supabaseKey").value.trim();
+  const key=$("supabaseKey").value.replace(/\s+/g,"").trim();
   if(url) localStorage.setItem("haruno32_supabase_url",url);
   else localStorage.removeItem("haruno32_supabase_url");
   if(key) localStorage.setItem("haruno32_supabase_key",key);
   else localStorage.removeItem("haruno32_supabase_key");
+  $("supabaseKey").value=key;
   initSupabase();
   await updateBadge(true);
 };

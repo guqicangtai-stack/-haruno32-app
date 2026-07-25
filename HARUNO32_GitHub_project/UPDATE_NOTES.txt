@@ -1,8 +1,8 @@
-HARUNO32 v6.0.0
-- Fixes 401 connection test for new sb_publishable API keys
-- Does not send opaque publishable keys as JWT Bearer tokens
-- Verifies cloud connection before loading records
-- Adds one-button migration of local smartphone records to Supabase
-- Prevents duplicate migration by record ID
-- Reloads the shared cloud history after connection
-- Forces old mobile caches to update
+HARUNO32 v6.1.0
+- Deletes the known truncated API key from older versions
+- Never embeds or restores that invalid key
+- Keeps the correct Supabase Project URL automatically
+- Removes spaces and line breaks when a key is pasted
+- Detects keys ending in '-' as truncated before sending
+- Shows URL, masked key, key length, key type and server error on screen
+- Keeps local records safe while connection is incomplete

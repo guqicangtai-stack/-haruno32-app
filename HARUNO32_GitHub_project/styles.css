@@ -43,3 +43,16 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 .sync-badge.online{background:#d9f3df;color:#174c2d}
 .sync-badge.error{background:#f8d9d5;color:#7b2118}
 #syncLocalBtn{margin-top:10px}
+
+.diagnostic{
+  margin-top:12px;
+  padding:14px 16px;
+  border-radius:14px;
+  font-size:.92rem;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+}
+.diagnostic.info{background:#eef3ef;color:#33443a}
+.diagnostic.success{background:#dcf3e2;color:#174c2d}
+.diagnostic.error{background:#fae2df;color:#7b2118}
+.diagnostic strong{display:block;margin-bottom:4px}
