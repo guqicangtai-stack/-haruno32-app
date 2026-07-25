@@ -2,7 +2,15 @@ const LOCAL_KEY="haruno32_records_v1";
 const ENV_KEY="haruno32_environment_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="sb_publishable_pswWBc9LE6xfvrvHCpstvg_IDMkfSi-";
-const APP_VERSION="5.0.0";
+const APP_VERSION="5.1.0";
+function ensureDefaultConnection(){
+  const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
+  const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
+  if(!savedUrl) localStorage.setItem("haruno32_supabase_url",DEFAULT_SUPABASE_URL);
+  if(!savedKey) localStorage.setItem("haruno32_supabase_key",DEFAULT_SUPABASE_KEY);
+}
+ensureDefaultConnection();
+
 let selectedFiles=[], records=[], envImports=[], supabaseClient=null, activeRecord=null;
 const $=id=>document.getElementById(id);
 
