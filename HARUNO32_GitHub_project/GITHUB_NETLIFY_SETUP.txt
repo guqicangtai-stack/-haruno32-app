@@ -1,0 +1,39 @@
+HARUNO32 自動更新化の手順
+
+目的:
+GitHubのコードを更新すると、Netlifyが自動でサイトを更新する状態にします。
+一度つなげれば、今後はサイトを削除したりZIPを毎回Dropしたりする必要はありません。
+
+1. GitHubのリポジトリを開く
+   guqicangtai-stack/-haruno32-app
+
+2. このZIPを解凍する
+
+3. GitHubで「Add file」→「Upload files」を選ぶ
+
+4. 解凍したフォルダの中身をすべてアップロードする
+   注意: HARUNO32_projectフォルダそのものではなく、
+   index.html、app.js、styles.css など中身をアップロードします。
+
+5. Commit changes を押す
+
+6. Netlifyで現在のHARUNO32プロジェクトを開く
+
+7. Project configuration → Build & deploy → Link repository
+   または「Git repositoryに接続」を選ぶ
+
+8. GitHubを選び、
+   guqicangtai-stack/-haruno32-app を指定する
+
+9. Publish directory は「.」または空欄
+   Build command は空欄
+
+10. Deployを実行する
+
+以後:
+GitHubのファイルを更新するたびにNetlifyが自動公開します。
+URLは現在のNetlify URLをそのまま使えます。
+
+現在のバージョン:
+V2.0.0
+SAWACHI CSV取込画面・日別集計機能入り
