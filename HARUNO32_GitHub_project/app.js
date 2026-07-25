@@ -3,12 +3,53 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="18.0.0";
+const APP_VERSION="19.0.0";
+const PROFILE_KEY="haruno32_farm_profile_v1";
+const ONBOARDING_KEY="haruno32_onboarding_complete_v1";
 const PEST_KEY="haruno32_pest_records_v1";
 const LEARNING_KEY="haruno32_learning_notes_v1";
 const FAILURE_KEY="haruno32_failure_records_v1";
 const DECISION_KEY="haruno32_decisions_v1";
 const TARGET_KEY="haruno32_target_settings_v1";
+
+function farmProfile(){
+  try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||"{}")}catch{return {}}
+}
+function saveFarmProfileData(data){localStorage.setItem(PROFILE_KEY,JSON.stringify(data))}
+function applyFarmProfile(){
+  const p=farmProfile();
+  const farmName=(p.farmName||"").trim();
+  if($("farmDisplayName")) $("farmDisplayName").textContent=farmName||"AI栽培ダッシュボード";
+  if($("farmDisplaySub")) $("farmDisplaySub").textContent=p.crop?`${p.crop}｜${p.region||"地域未設定"}｜毎日の判断をシンプルに`:"スマホで記録、PCで振り返る。";
+  if($("profileStatusBadge")){ $("profileStatusBadge").textContent=farmName?"設定済み":"未設定"; $("profileStatusBadge").classList.toggle("off",!farmName); }
+  const map={profileFarmName:"farmName",profileOwnerName:"ownerName",profileCrop:"crop",profileRegion:"region",profileHouseCount:"houseCount",profileArea:"area",profileVariety:"variety",profileMethod:"method"};
+  Object.entries(map).forEach(([id,key])=>{if($(id)&&p[key]!==undefined)$(id).value=p[key]});
+}
+function collectProfile(prefix="profile"){
+  const id=n=>$(prefix+n);
+  return {farmName:(id("FarmName")?.value||"").trim(),ownerName:(id("OwnerName")?.value||"").trim(),crop:id("Crop")?.value||"きゅうり",region:(id("Region")?.value||"").trim(),houseCount:Number(id("HouseCount")?.value||1),area:Number(id("Area")?.value||0),variety:(id("Variety")?.value||"").trim(),method:id("Method")?.value||"養液土耕"};
+}
+let onboardingStep=1;
+function showOnboardingStep(step){
+  onboardingStep=Math.max(1,Math.min(3,step));
+  document.querySelectorAll(".onboarding-step").forEach(x=>x.classList.toggle("active",Number(x.dataset.step)===onboardingStep));
+  if($("onboardingProgress")) $("onboardingProgress").style.width=`${onboardingStep/3*100}%`;
+  if($("onboardingBack")) $("onboardingBack").style.visibility=onboardingStep===1?"hidden":"visible";
+  if($("onboardingNext")) $("onboardingNext").style.display=onboardingStep===3?"none":"inline-flex";
+  if($("onboardingFinish")) $("onboardingFinish").style.display=onboardingStep===3?"inline-flex":"none";
+}
+function openOnboarding(){
+  const p=farmProfile();
+  if($("onboardFarmName")) $("onboardFarmName").value=p.farmName||"";
+  if($("onboardRegion")) $("onboardRegion").value=p.region||"";
+  if($("onboardCrop")) $("onboardCrop").value=p.crop||"きゅうり";
+  if($("onboardVariety")) $("onboardVariety").value=p.variety||"";
+  if($("onboardHouseCount")) $("onboardHouseCount").value=p.houseCount||1;
+  if($("onboardArea")) $("onboardArea").value=p.area||"";
+  if($("onboardTargetKg")) $("onboardTargetKg").value=targetSettings().targetKg||32000;
+  showOnboardingStep(1);$("onboardingDialog")?.showModal();
+}
+
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
@@ -1512,6 +1553,28 @@ if($("decisionForm"))$("decisionForm").onsubmit=async e=>{
 };
 if($("syncDecisionsBtn"))$("syncDecisionsBtn").onclick=async()=>{try{const n=await syncDecisions();renderAll();alert(`判断ログを同期しました（端末内 ${n}件）`)}catch(e){alert(`同期できませんでした。最新版の supabase_setup.sql を実行してください。\n\n${e.message}`)}};
 if($("copyDecisionBrief"))$("copyDecisionBrief").onclick=()=>{const d=decisionEngineData();copyTextSafe(`【HARUNO32 今日の意思決定】\n${d.moves.map((x,i)=>`${i+1}. ${x}`).join("\n")}\n\n【変化アラート】\n${d.alerts.map(x=>`・${x.title}：${x.text}`).join("\n")}`,"判断メモをコピーしました")};
+
+
+if($("saveFarmProfile")) $("saveFarmProfile").onclick=()=>{
+  const p=collectProfile("profile");
+  if(!p.farmName){alert("農場名を入力してください");return}
+  saveFarmProfileData(p);localStorage.setItem(ONBOARDING_KEY,"1");applyFarmProfile();
+  $("profileSaveStatus").textContent="農場プロフィールを保存しました";$("profileSaveStatus").classList.add("show");
+};
+if($("openOnboarding")) $("openOnboarding").onclick=openOnboarding;
+if($("onboardingBack")) $("onboardingBack").onclick=()=>showOnboardingStep(onboardingStep-1);
+if($("onboardingNext")) $("onboardingNext").onclick=()=>{
+  if(onboardingStep===1 && !($("onboardFarmName")?.value||"").trim()){alert("農場名を入力してください");return}
+  showOnboardingStep(onboardingStep+1);
+};
+if($("onboardingFinish")) $("onboardingFinish").onclick=()=>{
+  const old=farmProfile();
+  const p={...old,farmName:($("onboardFarmName")?.value||"").trim(),region:($("onboardRegion")?.value||"").trim(),crop:$("onboardCrop")?.value||"きゅうり",variety:($("onboardVariety")?.value||"").trim(),houseCount:Number($("onboardHouseCount")?.value||1),area:Number($("onboardArea")?.value||0),method:old.method||"養液土耕"};
+  saveFarmProfileData(p);localStorage.setItem(TARGET_KEY,JSON.stringify({...targetSettings(),targetKg:Number($("onboardTargetKg")?.value||32000)}));localStorage.setItem(ONBOARDING_KEY,"1");
+  applyFarmProfile();$("onboardingDialog")?.close();renderAll();
+};
+applyFarmProfile();
+setTimeout(()=>{if(!localStorage.getItem(ONBOARDING_KEY))openOnboarding()},500);
 
 envImports=envLoad();
 (async()=>{

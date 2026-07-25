@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=18.0.0">
+  <link rel="stylesheet" href="styles.css?v=19.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
 <header class="hero">
   <div>
-    <p class="brand">HARUNO32</p>
-    <h1>AI栽培ダッシュボード</h1>
-    <p>スマホで記録、PCで振り返る。</p>
+    <p class="brand" id="productBrand">HARUNO32</p>
+    <h1 id="farmDisplayName">AI栽培ダッシュボード</h1>
+    <p id="farmDisplaySub">スマホで記録、PCで振り返る。</p>
   </div>
   <div id="syncBadge" class="sync-badge">接続確認中</div>
 </header>
@@ -678,6 +678,21 @@
 </section>
 
 <section id="settings" class="view">
+  <section class="card product-profile-card">
+    <div class="row-between"><div><p class="eyebrow">PRODUCT PROFILE</p><h2>農場プロフィール</h2><p class="muted">一般の農家が初回設定だけで使えるように、農場名・作物・施設情報を保存します。</p></div><span id="profileStatusBadge" class="phase-badge">未設定</span></div>
+    <div class="profile-grid">
+      <label>農場名<input id="profileFarmName" placeholder="例：春野きゅうり農園"></label>
+      <label>代表者名<input id="profileOwnerName" placeholder="例：谷崎 蒼太"></label>
+      <label>主な作物<select id="profileCrop"><option>きゅうり</option><option>ピーマン</option><option>ナス</option><option>トマト</option><option>その他</option></select></label>
+      <label>地域<input id="profileRegion" placeholder="例：高知県高知市春野町"></label>
+      <label>施設数<input id="profileHouseCount" type="number" min="1" value="1"></label>
+      <label>栽培面積（a）<input id="profileArea" type="number" min="0" step="0.1" placeholder="例：16"></label>
+      <label>品種<input id="profileVariety" placeholder="例：常翔661"></label>
+      <label>栽培方式<select id="profileMethod"><option>土耕</option><option>養液土耕</option><option>養液栽培</option><option>露地</option><option>その他</option></select></label>
+    </div>
+    <div class="quick-actions"><button id="saveFarmProfile" class="primary" type="button">プロフィールを保存</button><button id="openOnboarding" class="secondary" type="button">初回ガイドを開く</button></div>
+    <p id="profileSaveStatus" class="status"></p>
+  </section>
   <div class="layout">
     <section class="card">
       <h2>オンライン接続設定 <small class="setting-note">通常は操作不要</small></h2>
@@ -715,7 +730,34 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v17.0.0｜AI農場長・根の健康推定・農場内検索</footer>
+
+<dialog id="onboardingDialog" class="onboarding-dialog">
+  <form method="dialog" class="onboarding-shell" id="onboardingForm">
+    <button class="onboarding-close" value="cancel" aria-label="閉じる">×</button>
+    <p class="eyebrow">HARUNO32 PRODUCT 1.0</p>
+    <h2>3分で農場を設定</h2>
+    <p class="muted">入力内容はこの端末に保存されます。あとから設定画面で変更できます。</p>
+    <div class="onboarding-progress"><i id="onboardingProgress"></i></div>
+    <section class="onboarding-step active" data-step="1">
+      <h3>農場の基本情報</h3>
+      <label>農場名<input id="onboardFarmName" required placeholder="例：春野きゅうり農園"></label>
+      <label>地域<input id="onboardRegion" placeholder="例：高知県高知市"></label>
+    </section>
+    <section class="onboarding-step" data-step="2">
+      <h3>栽培情報</h3>
+      <label>主な作物<select id="onboardCrop"><option>きゅうり</option><option>ピーマン</option><option>ナス</option><option>トマト</option><option>その他</option></select></label>
+      <label>品種<input id="onboardVariety" placeholder="例：常翔661"></label>
+      <div class="input-pair"><label>施設数<input id="onboardHouseCount" type="number" min="1" value="1"></label><label>面積（a）<input id="onboardArea" type="number" min="0" step="0.1"></label></div>
+    </section>
+    <section class="onboarding-step" data-step="3">
+      <h3>目標を設定</h3>
+      <label>目標収穫量（kg）<input id="onboardTargetKg" type="number" min="1" step="100" value="32000"></label>
+      <p class="notice">最初は概算で大丈夫です。記録を始めることを優先しましょう。</p>
+    </section>
+    <div class="onboarding-actions"><button id="onboardingBack" class="secondary" type="button">戻る</button><button id="onboardingNext" class="primary" type="button">次へ</button><button id="onboardingFinish" class="primary" type="button">設定を完了</button></div>
+  </form>
+</dialog>
+<footer class="app-footer">HARUNO32 Product 1.0｜農場プロフィール・初回ガイド・6画面UI</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
@@ -730,6 +772,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=17.0.0"></script>
+<script src="app.js?v=19.0.0"></script>
 </body>
 </html>
