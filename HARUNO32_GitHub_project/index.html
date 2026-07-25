@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.1.0">
+  <link rel="stylesheet" href="styles.css?v=6.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -154,11 +154,16 @@
   <div class="layout">
     <section class="card">
       <h2>オンライン接続設定 <small class="setting-note">通常は操作不要</small></h2>
-      <p class="muted">HARUNO32専用の接続先は自動設定済みです。入力欄が空に見えても自動接続します。上部が「オンライン同期」なら正常です。</p>
+      <p class="muted">HARUNO32専用の接続先は自動設定済みです。上部が「オンライン同期｜v6.0.0」なら正常です。</p>
       <label>Supabase URL<input id="supabaseUrl" type="url" placeholder="https://xxxxx.supabase.co"></label>
       <label>Supabase anon key<textarea id="supabaseKey" placeholder="公開用 anon key"></textarea></label>
       <button id="saveSettings" class="primary">接続設定を保存</button>
       <button id="testConnection" class="secondary">接続を確認</button>
+      <button id="syncLocalBtn" class="secondary">端末内の記録をクラウドへ同期</button>
+      <div class="notice">
+        V6では新しいPublishable keyをJWTとして送らないよう修正しました。
+        接続成功後、このボタンでスマホ内の過去記録をPCと共有できます。
+      </div>
     </section>
 
     <section class="card">
@@ -170,7 +175,7 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v5.1.0｜日次記録・写真・クラウド同期・SAWACHI CSV準備版</footer>
+<footer class="app-footer">HARUNO32 v6.0.0｜日次記録・写真・クラウド同期・SAWACHI CSV準備版</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
@@ -185,6 +190,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=5.1.0"></script>
+<script src="app.js?v=6.0.0"></script>
 </body>
 </html>

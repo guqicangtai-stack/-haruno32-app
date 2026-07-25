@@ -2,7 +2,7 @@ const LOCAL_KEY="haruno32_records_v1";
 const ENV_KEY="haruno32_environment_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="sb_publishable_pswWBc9LE6xfvrvHCpstvg_IDMkfSi-";
-const APP_VERSION="5.1.0";
+const APP_VERSION="6.0.0";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
   const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
@@ -55,9 +55,11 @@ async function connectionCheck(){
   if(!s.key || !(s.key.startsWith("sb_publishable_") || s.key.startsWith("eyJ"))){
     throw new Error("Publishable keyが途中で切れているか、種類が違います");
   }
-  const response=await fetch(`${s.url}/rest/v1/daily_records?select=id&limit=1`,{
-    headers:{apikey:s.key,Authorization:`Bearer ${s.key}`}
-  });
+  const headers={apikey:s.key};
+  // Legacy anon keys are JWTs and may be sent as Bearer tokens.
+  // New sb_publishable keys are opaque and must not be treated as JWTs.
+  if(s.key.startsWith("eyJ")) headers.Authorization=`Bearer ${s.key}`;
+  const response=await fetch(`${s.url}/rest/v1/daily_records?select=id&limit=1`,{headers});
   const body=await response.text();
   if(!response.ok){
     let message=body;
@@ -79,10 +81,14 @@ async function updateBadge(showMessage=false){
   try{
     await connectionCheck();
     b.textContent=`オンライン同期｜v${APP_VERSION}`;
+    b.classList.add("online");
+    b.classList.remove("error");
     if(showMessage)alert("接続成功：オンライン同期になりました");
     return true;
   }catch(e){
     b.textContent=`接続エラー｜v${APP_VERSION}`;
+    b.classList.add("error");
+    b.classList.remove("online");
     if(showMessage)alert(`接続できませんでした\n\n${e.message}`);
     const fs=$("formStatus");
     if(fs){fs.textContent=`接続エラー：${e.message}`;fs.classList.add("show");}
@@ -113,6 +119,47 @@ async function uploadPhotos(recordId,files){
   }
   return paths;
 }
+
+async function syncLocalRecordsToCloud(){
+  if(!supabaseClient)throw new Error("オンライン接続されていません");
+  const local=localLoad();
+  if(!local.length)return {uploaded:0,skipped:0};
+
+  let uploaded=0,skipped=0;
+  for(const rec of local){
+    const {data:existing,error:checkError}=await supabaseClient
+      .from("daily_records").select("id").eq("id",rec.id).maybeSingle();
+    if(checkError)throw checkError;
+    if(existing){skipped++;continue;}
+
+    const photoFiles=(rec.photos||[])
+      .filter(p=>p.data)
+      .map((p,i)=>dataURLtoFile(p.data,p.name||`photo${i+1}.jpg`,p.type));
+
+    const {error:insertError}=await supabaseClient.from("daily_records").insert({
+      id:rec.id,
+      record_date:rec.record_date,
+      house:rec.house,
+      work:rec.work,
+      vigor:rec.vigor,
+      notes:rec.notes,
+      analysis:rec.analysis||"",
+      photos:[],
+      created_at:rec.created_at||new Date().toISOString()
+    });
+    if(insertError)throw insertError;
+
+    if(photoFiles.length){
+      const photos=await uploadPhotos(rec.id,photoFiles);
+      const {error:updateError}=await supabaseClient
+        .from("daily_records").update({photos}).eq("id",rec.id);
+      if(updateError)throw updateError;
+    }
+    uploaded++;
+  }
+  return {uploaded,skipped};
+}
+
 async function saveRecord(rec,files){
   if(!supabaseClient){
     rec.photos=await Promise.all(files.map(async f=>({name:f.name,type:f.type,data:await fileToDataURL(f)})));
@@ -221,7 +268,24 @@ $("saveSettings").onclick=async()=>{
 };
 $("testConnection").onclick=async()=>{
   initSupabase();
-  await updateBadge(true);
+  const ok=await updateBadge(true);
+  if(ok){await loadRecords();renderAll();}
+};
+$("syncLocalBtn").onclick=async()=>{
+  const btn=$("syncLocalBtn");
+  btn.disabled=true;btn.textContent="同期中…";
+  try{
+    initSupabase();
+    const ok=await updateBadge(false);
+    if(!ok)throw new Error("先に接続を確認してください");
+    const result=await syncLocalRecordsToCloud();
+    await loadRecords();renderAll();
+    alert(`同期完了：${result.uploaded}件をクラウドへ保存、${result.skipped}件は既に保存済みです`);
+  }catch(e){
+    alert(`同期できませんでした\n\n${e.message}`);
+  }finally{
+    btn.disabled=false;btn.textContent="端末内の記録をクラウドへ同期";
+  }
 };
 $("exportBtn").onclick=()=>{
   const blob=new Blob([JSON.stringify({version:1,exported_at:new Date().toISOString(),records},null,2)],{type:"application/json"});
@@ -348,4 +412,10 @@ $("clearEnv").onclick=()=>{
 
 
 envImports=envLoad();
-initSupabase();loadRecords().then(renderAll);
+(async()=>{
+  initSupabase();
+  const ok=await updateBadge(false);
+  if(ok) await loadRecords();
+  else records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
+  renderAll();
+})();

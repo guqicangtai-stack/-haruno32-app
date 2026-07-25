@@ -39,3 +39,7 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
   font-size:.82rem;
   text-align:center;
 }
+
+.sync-badge.online{background:#d9f3df;color:#174c2d}
+.sync-badge.error{background:#f8d9d5;color:#7b2118}
+#syncLocalBtn{margin-top:10px}

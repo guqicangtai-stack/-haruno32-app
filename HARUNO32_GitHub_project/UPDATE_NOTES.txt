@@ -1,7 +1,8 @@
-HARUNO32 v5.1.0
-- Forces the built-in Supabase URL/key into local storage on first load
-- Cache-busts app.js and styles.css
-- Replaces stale-cache service worker with network-first updates
-- Deletes old HARUNO32 caches automatically
-- Retries Supabase initialization after the CDN library loads
-- Keeps smartphone and PC on the same cloud data
+HARUNO32 v6.0.0
+- Fixes 401 connection test for new sb_publishable API keys
+- Does not send opaque publishable keys as JWT Bearer tokens
+- Verifies cloud connection before loading records
+- Adds one-button migration of local smartphone records to Supabase
+- Prevents duplicate migration by record ID
+- Reloads the shared cloud history after connection
+- Forces old mobile caches to update
