@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1510">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20.0.0">
+  <link rel="stylesheet" href="styles.css?v=21.0.0">
   <title>HARUNO32</title>
 </head>
 <body class="product-11">
@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="header-actions">
-    <span class="product-edition">PRODUCT 1.1</span>
+    <span class="product-edition">SIGNATURE 1.2</span>
     <div id="syncBadge" class="sync-badge">接続確認中</div>
   </div>
 </header>
@@ -36,25 +36,30 @@
 <main>
 
 <section id="home" class="view active command-view">
-  <section class="command-header">
-    <div>
-      <p class="eyebrow">MORNING COMMAND</p>
-      <h2>今日の農場を、ひと目で。</h2>
-      <p id="commandDate" class="muted"></p>
+  <section class="pulse-stage" aria-labelledby="pulseHeadline">
+    <div class="pulse-topline">
+      <div class="pulse-wordmark"><span class="h32-glyph">H32</span><span>FARM PERFORMANCE SYSTEM</span></div>
+      <div class="command-status-wrap">
+        <span class="live-dot"><i></i> LIVE</span><span id="cropPhaseBadge" class="phase-badge">判定中</span>
+        <span id="homeSyncState" class="home-sync"></span>
+      </div>
     </div>
-    <div class="command-status-wrap">
-      <span class="live-dot"><i></i> LIVE</span><span id="cropPhaseBadge" class="phase-badge">判定中</span>
-      <span id="homeSyncState" class="home-sync"></span>
+    <div class="pulse-center">
+      <p id="commandDate" class="pulse-date"></p>
+      <p class="pulse-kicker">TODAY'S FARM PULSE</p>
+      <div class="pulse-score-wrap"><strong id="pulseScore" class="pulse-score">--</strong><span>/100</span></div>
+      <h2 id="pulseHeadline">農場は、今日も前へ進んでいる。</h2>
+      <p id="pulseStatement" class="pulse-statement">記録を読み込み、今日の状態を判定しています。</p>
+      <button class="pulse-cta" data-go="entry">今日を記録する <span>→</span></button>
+    </div>
+    <div class="pulse-rail" aria-label="本日の主要指標">
+      <article><span>HARVEST / TODAY</span><strong id="cmdTodayHarvest">0 kg</strong><small id="cmdHarvestNote">記録待ち</small></article>
+      <article><span>SEASON TOTAL</span><strong id="cmdTotalHarvest">0 kg</strong><small>今作累計</small></article>
+      <article class="target-rail"><span>TARGET / 32T</span><strong id="cmdTargetPct">0%</strong><div class="mini-progress"><i id="cmdTargetBar"></i></div></article>
+      <article><span>VIGOR</span><strong id="cmdVigor">—</strong><small id="cmdVigorNote">記録待ち</small></article>
+      <article><span>WORK</span><strong id="cmdWorkMinutes">—</strong><small>今日の記録から</small></article>
     </div>
   </section>
-
-  <div class="command-kpis">
-    <article class="metric-card-command"><span>本日の収穫</span><strong id="cmdTodayHarvest">0 kg</strong><small id="cmdHarvestNote">記録待ち</small></article>
-    <article class="metric-card-command"><span>収穫累計</span><strong id="cmdTotalHarvest">0 kg</strong><small>今作累計</small></article>
-    <article class="metric-card-command"><span>32トン進捗</span><strong id="cmdTargetPct">0%</strong><div class="mini-progress"><i id="cmdTargetBar"></i></div></article>
-    <article class="metric-card-command"><span>最新草勢</span><strong id="cmdVigor">—</strong><small id="cmdVigorNote">記録待ち</small></article>
-    <article class="metric-card-command"><span>作業時間</span><strong id="cmdWorkMinutes">—</strong><small>今日の記録から</small></article>
-  </div>
 
   <div class="command-main-grid">
     <section class="card fertilizer-card">

@@ -886,6 +886,15 @@ function renderHome(){
   $("cmdVigorNote").textContent=latest?`${latest.record_date}｜${latest.house}`:"本日の記録待ち";
   const mins=(latest?.work||"").match(/(\d+)\s*分/g)?.reduce((s,x)=>s+Number(x.match(/\d+/)[0]),0)||null;
   $("cmdWorkMinutes").textContent=mins?`${mins}分`:"—";
+  const vigorScore=latest?Math.round((numberOrZero(latest.vigor)/5)*100):62;
+  const envScore=env?Math.max(45,Math.min(100,Math.round(88-Math.abs(numberOrZero(env.temp_avg)-24)*2-Math.max(0,numberOrZero(env.humidity_avg)-90)))):64;
+  const paceScore=Math.max(45,Math.min(100,Math.round(target.pct>0?70+Math.min(25,target.pct/4):60)));
+  const pulse=Math.round(vigorScore*.42+envScore*.28+paceScore*.30);
+  if($("pulseScore")) $("pulseScore").textContent=String(pulse);
+  if($("pulseStatement")){
+    const statement=pulse>=88?"今日は、伸ばせる日です。迷わず、精度高く。":pulse>=75?"流れは良好です。小さな変化を見逃さない一日に。":pulse>=62?"農場は安定しています。攻める前に、足元を整える日です。":"今日は守る日です。急がず、原因を一つずつ確かめましょう。";
+    $("pulseStatement").textContent=statement;
+  }
   const recipe=FERTILIZER_MASTER[phase.key]||FERTILIZER_MASTER.autumn;
   $("fertilizerSeason").textContent=recipe.label;
   $("fertilizerRecipe").innerHTML=`<div class="fertilizer-name"><strong>${recipe.name}</strong><span>${recipe.ratio}</span></div><div class="fertilizer-lines"><p><b>A液：</b>${esc(recipe.a)}</p><p><b>B液：</b>${esc(recipe.b)}</p></div><div class="fertilizer-cost"><span>標準材料費</span><strong>${recipe.cost?recipe.cost.toLocaleString()+"円":"—"}</strong></div><p class="muted">${esc(recipe.note)}</p>`;
