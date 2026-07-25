@@ -340,3 +340,7 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 .pest-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border:1px solid #dce5df;border-radius:12px;background:#fff}
 .pest-row div{display:flex;flex-direction:column;gap:3px}.pest-row span,.pest-row small{color:#617066}.pest-row small{grid-column:1/-1}
 @media(max-width:650px){.pest-row{grid-template-columns:1fr}}
+
+
+/* v15 栽培マスターAI */
+.master-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-bottom:16px}.master-list{display:grid;gap:10px}.master-list article{display:grid;gap:4px;padding:12px;border:1px solid var(--line,#d8e2da);border-radius:12px;background:#fbfdfb}.master-list article span{color:#52645a;line-height:1.65}.master-summary{display:grid;gap:10px}.chart-line{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line,#d8e2da)}.chart-line span{color:#52645a}.chart-line b{text-align:right}@media(max-width:820px){.master-grid{grid-template-columns:1fr}.chart-line{align-items:flex-start;flex-direction:column;gap:3px}.chart-line b{text-align:left}}

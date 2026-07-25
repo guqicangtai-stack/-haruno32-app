@@ -117,3 +117,35 @@ drop policy if exists "public pest read" on public.pest_control_records;
 drop policy if exists "public pest insert" on public.pest_control_records;
 create policy "public pest read" on public.pest_control_records for select using (true);
 create policy "public pest insert" on public.pest_control_records for insert with check (true);
+
+
+-- v15 栽培学習ノート
+create table if not exists public.cultivation_learning_notes (
+  id uuid primary key,
+  note_date date not null,
+  house text not null,
+  learning_text text not null,
+  evidence_text text default '',
+  created_at timestamptz default now()
+);
+alter table public.cultivation_learning_notes enable row level security;
+drop policy if exists "public learning read" on public.cultivation_learning_notes;
+drop policy if exists "public learning insert" on public.cultivation_learning_notes;
+create policy "public learning read" on public.cultivation_learning_notes for select using (true);
+create policy "public learning insert" on public.cultivation_learning_notes for insert with check (true);
+
+-- v15 失敗・異常データベース
+create table if not exists public.cultivation_failure_records (
+  id uuid primary key,
+  event_date date not null,
+  house text not null,
+  event_text text not null,
+  cause_text text default '',
+  response_text text default '',
+  created_at timestamptz default now()
+);
+alter table public.cultivation_failure_records enable row level security;
+drop policy if exists "public failure read" on public.cultivation_failure_records;
+drop policy if exists "public failure insert" on public.cultivation_failure_records;
+create policy "public failure read" on public.cultivation_failure_records for select using (true);
+create policy "public failure insert" on public.cultivation_failure_records for insert with check (true);

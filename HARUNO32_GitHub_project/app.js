@@ -3,8 +3,10 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="14.0.0";
+const APP_VERSION="15.0.0";
 const PEST_KEY="haruno32_pest_records_v1";
+const LEARNING_KEY="haruno32_learning_notes_v1";
+const FAILURE_KEY="haruno32_failure_records_v1";
 const DECISION_KEY="haruno32_decisions_v1";
 const TARGET_KEY="haruno32_target_settings_v1";
 function ensureDefaultConnection(){
@@ -16,12 +18,14 @@ function ensureDefaultConnection(){
 }
 ensureDefaultConnection();
 
-let selectedFiles=[], records=[], envImports=[], operations=[], decisions=[], pestRecords=[], supabaseClient=null, activeRecord=null;
+let selectedFiles=[], records=[], envImports=[], operations=[], decisions=[], pestRecords=[], learningNotes=[], failureRecords=[], supabaseClient=null, activeRecord=null;
 const $=id=>document.getElementById(id);
 
 $("date").value=new Date().toISOString().slice(0,10);
 $("opDate").value=new Date().toISOString().slice(0,10);
 if($("pestDate")) $("pestDate").value=new Date().toISOString().slice(0,10);
+if($("learningDate")) $("learningDate").value=new Date().toISOString().slice(0,10);
+if($("failureDate")) $("failureDate").value=new Date().toISOString().slice(0,10);
 
 function goToView(view){
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.view===view));
@@ -1079,8 +1083,56 @@ if($("pestForm")) $("pestForm").addEventListener("submit",async e=>{
   catch(err){$("pestStatus").textContent="保存できませんでした："+err.message;$("pestStatus").classList.add("show");}
 });
 
+
+
+// v15 栽培マスターAI：学習ノート・失敗データベース
+function localLoadArray(key){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch{return []}}
+function localSaveArray(key,data){localStorage.setItem(key,JSON.stringify(data))}
+async function loadLearningNotes(){
+  if(!supabaseClient){learningNotes=localLoadArray(LEARNING_KEY);return}
+  const {data,error}=await supabaseClient.from("cultivation_learning_notes").select("*").order("note_date",{ascending:false});
+  learningNotes=error?localLoadArray(LEARNING_KEY):(data||[]);
+}
+async function saveLearningNote(rec){
+  if(!supabaseClient){learningNotes.unshift(rec);localSaveArray(LEARNING_KEY,learningNotes);return}
+  const {error}=await supabaseClient.from("cultivation_learning_notes").insert({id:rec.id,note_date:rec.note_date,house:rec.house,learning_text:rec.learning_text,evidence_text:rec.evidence_text,created_at:rec.created_at});
+  if(error)throw error;
+}
+async function loadFailureRecords(){
+  if(!supabaseClient){failureRecords=localLoadArray(FAILURE_KEY);return}
+  const {data,error}=await supabaseClient.from("cultivation_failure_records").select("*").order("event_date",{ascending:false});
+  failureRecords=error?localLoadArray(FAILURE_KEY):(data||[]);
+}
+async function saveFailureRecord(rec){
+  if(!supabaseClient){failureRecords.unshift(rec);localSaveArray(FAILURE_KEY,failureRecords);return}
+  const {error}=await supabaseClient.from("cultivation_failure_records").insert(rec);if(error)throw error;
+}
+function renderCultivationChart(){
+  if(!$("cultivationChart"))return;
+  const latestRecord=[...records].sort((a,b)=>String(b.date||b.record_date||"").localeCompare(String(a.date||a.record_date||"")))[0];
+  const latestOp=[...operations].sort((a,b)=>String(b.operation_date||b.date||"").localeCompare(String(a.operation_date||a.date||"")))[0];
+  const latestPest=[...pestRecords].sort((a,b)=>String(b.spray_date||"").localeCompare(String(a.spray_date||"")))[0];
+  $("cultivationChart").innerHTML=`
+    <div class="chart-line"><span>最新の日次記録</span><b>${latestRecord?esc(latestRecord.date||latestRecord.record_date||"記録あり"):"未記録"}</b></div>
+    <div class="chart-line"><span>最新の収穫・灌水・施肥</span><b>${latestOp?esc(latestOp.operation_date||latestOp.date||"記録あり"):"未記録"}</b></div>
+    <div class="chart-line"><span>最新の防除</span><b>${latestPest?`${esc(latestPest.spray_date)}｜${esc(latestPest.target_pest)}`:"未記録"}</b></div>
+    <div class="chart-line"><span>学習ノート</span><b>${learningNotes.length}件</b></div>
+    <div class="chart-line"><span>失敗データ</span><b>${failureRecords.length}件</b></div>
+    <p class="notice">同じ日付の草勢・写真・収穫・環境・施肥・防除を重ねて振り返るためのカルテです。記録が増えるほど比較の精度が上がります。</p>`;
+}
+function renderMaster(){
+  if(!$("learningList"))return;
+  $("learningCount").textContent=`${learningNotes.length}件`;$("failureCount").textContent=`${failureRecords.length}件`;$("knowledgeCount").textContent=learningNotes.length+failureRecords.length+pestRecords.length;
+  $("learningList").innerHTML=learningNotes.length?learningNotes.slice(0,12).map(x=>`<article class="record"><div class="record-head"><strong>${esc(x.note_date)}｜${esc(x.house)}</strong></div><p>${esc(x.learning_text)}</p>${x.evidence_text?`<p class="meta">根拠：${esc(x.evidence_text)}</p>`:""}</article>`).join(""):'<div class="empty">学びはまだありません。</div>';
+  $("failureList").innerHTML=failureRecords.length?failureRecords.slice(0,12).map(x=>`<article class="record"><div class="record-head"><strong>${esc(x.event_date)}｜${esc(x.house)}</strong><span class="badge">${esc(x.event_text)}</span></div>${x.cause_text?`<p>原因仮説：${esc(x.cause_text)}</p>`:""}${x.response_text?`<p class="meta">対応・結果：${esc(x.response_text)}</p>`:""}</article>`).join(""):'<div class="empty">失敗・異常の記録はまだありません。</div>';
+  renderCultivationChart();
+}
+if($("learningForm"))$("learningForm").addEventListener("submit",async e=>{e.preventDefault();const rec={id:crypto.randomUUID(),note_date:$("learningDate").value,house:$("learningHouse").value,learning_text:$("learningText").value.trim(),evidence_text:$("learningEvidence").value.trim(),created_at:new Date().toISOString()};try{await saveLearningNote(rec);await loadLearningNotes();renderMaster();e.target.reset();$("learningDate").value=new Date().toISOString().slice(0,10);$("learningStatus").textContent=supabaseClient?"学びをクラウド保存しました":"学びを端末内保存しました";$("learningStatus").classList.add("show")}catch(err){$("learningStatus").textContent="保存できませんでした："+err.message;$("learningStatus").classList.add("show")}});
+if($("failureForm"))$("failureForm").addEventListener("submit",async e=>{e.preventDefault();const rec={id:crypto.randomUUID(),event_date:$("failureDate").value,house:$("failureHouse").value,event_text:$("failureEvent").value.trim(),cause_text:$("failureCause").value.trim(),response_text:$("failureResponse").value.trim(),created_at:new Date().toISOString()};try{await saveFailureRecord(rec);await loadFailureRecords();renderMaster();e.target.reset();$("failureDate").value=new Date().toISOString().slice(0,10);$("failureStatus").textContent=supabaseClient?"失敗データをクラウド保存しました":"失敗データを端末内保存しました";$("failureStatus").classList.add("show")}catch(err){$("failureStatus").textContent="保存できませんでした："+err.message;$("failureStatus").classList.add("show")}});
+
 function renderAll(){
   renderPest();
+  renderMaster();
   renderEnvironment();
   renderCenter();
   renderDashboardPlus();
@@ -1289,7 +1341,7 @@ envImports=envLoad();
 (async()=>{
   initSupabase();
   const ok=await updateBadge(false);
-  if(ok){await loadRecords();await loadOperations();await loadDecisions();}
-  else{records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));await loadOperations();await loadDecisions();}
+  if(ok){await loadRecords();await loadOperations();await loadDecisions();await loadPestRecords();await loadLearningNotes();await loadFailureRecords();}
+  else{records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));await loadOperations();await loadDecisions();await loadPestRecords();await loadLearningNotes();await loadFailureRecords();}
   renderAll();
 })();

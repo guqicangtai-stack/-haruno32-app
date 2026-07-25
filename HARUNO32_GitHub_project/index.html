@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=14.0.0">
+  <link rel="stylesheet" href="styles.css?v=15.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -26,6 +26,7 @@
   <button data-view="assistant">AIアシスタント</button>
   <button data-view="decision">意思決定</button>
   <button data-view="pest">防除</button>
+  <button data-view="master">栽培マスター</button>
   <button data-view="environment">SAWACHI</button>
   <button data-view="history">履歴</button>
   <button data-view="settings">設定</button>
@@ -434,6 +435,58 @@
   </div>
 </section>
 
+
+<section id="master" class="view">
+  <section class="card center-hero">
+    <div>
+      <p class="eyebrow">HARUNO32 CULTIVATION MASTER AI</p>
+      <h2>栽培マスター・経験データベース</h2>
+      <p class="muted">谷崎ブレンド、栽培ルール、防除履歴、日々の学びと失敗を一つにつなぎます。</p>
+    </div>
+    <div class="score-orb"><span>知識蓄積</span><strong id="knowledgeCount">0</strong><small>件</small></div>
+  </section>
+
+  <div class="master-grid">
+    <section class="card">
+      <p class="eyebrow">HARUNO32 STANDARD</p><h2>栽培マスター</h2>
+      <div class="master-list">
+        <article><b>10〜11月 谷崎ブレンド</b><span>A：硝酸カルシウム1袋／B：尿素1/2袋・リン酸アンモニア1袋・硫酸カリウム1袋</span></article>
+        <article><b>12〜2月 谷崎ブレンド</b><span>A：硝酸カルシウム1袋／B：尿素1/2袋・リン酸アンモニア1/2袋・硫酸カリウム2袋</span></article>
+        <article><b>施肥判断</b><span>ECだけに頼らず窒素量で管理。硝酸態窒素は根域、低温、日射、草勢、着果負担と合わせて判断。</span></article>
+        <article><b>作業順序</b><span>摘葉を先に行い、その後につる下ろし。原則として同時に行わない。</span></article>
+        <article><b>観察基準</b><span>代表株、生長点、上から5枚目の葉幅、草勢、収穫、環境を継続して比較。</span></article>
+      </div>
+    </section>
+    <section class="card">
+      <p class="eyebrow">CULTIVATION CHART</p><h2>栽培カルテ</h2>
+      <div id="cultivationChart" class="master-summary"></div>
+    </section>
+  </div>
+
+  <div class="layout">
+    <form id="learningForm" class="card">
+      <h2>今日の学びを残す</h2>
+      <div class="input-pair"><label>日付<input id="learningDate" type="date" required></label><label>ハウス<select id="learningHouse"><option>南ハウス</option><option>北ハウス</option><option>両方</option></select></label></div>
+      <label>学び・気づき<textarea id="learningText" required placeholder="例：曇天3日目に草勢が落ち始めた。午後灌水を減らす判断が有効だった。"></textarea></label>
+      <label>根拠になった記録<textarea id="learningEvidence" placeholder="草勢、写真、収穫、環境、灌水、施肥、防除など"></textarea></label>
+      <button class="primary" type="submit">学びを保存</button><p id="learningStatus" class="status"></p>
+    </form>
+    <form id="failureForm" class="card">
+      <h2>失敗・異常を残す</h2>
+      <div class="input-pair"><label>発生日<input id="failureDate" type="date" required></label><label>ハウス<select id="failureHouse"><option>南ハウス</option><option>北ハウス</option><option>両方</option></select></label></div>
+      <label>症状・出来事<input id="failureEvent" required placeholder="例：曲がり果が急増、草勢が急落"></label>
+      <label>考えられる原因<textarea id="failureCause" placeholder="確定でなくても仮説として記録"></textarea></label>
+      <label>対応と結果<textarea id="failureResponse" placeholder="何を確認・変更し、その後どうなったか"></textarea></label>
+      <button class="primary" type="submit">失敗データを保存</button><p id="failureStatus" class="status"></p>
+    </form>
+  </div>
+
+  <div class="layout">
+    <section class="card"><div class="row-between"><div><p class="eyebrow">LEARNING NOTES</p><h2>AI学習ノート</h2></div><span id="learningCount" class="viz-badge">0件</span></div><div id="learningList" class="record-list"></div></section>
+    <section class="card"><div class="row-between"><div><p class="eyebrow">FAILURE DATABASE</p><h2>失敗データベース</h2></div><span id="failureCount" class="viz-badge">0件</span></div><div id="failureList" class="record-list"></div></section>
+  </div>
+</section>
+
 <section id="environment" class="view">
   <div class="layout">
     <section class="card">
@@ -535,7 +588,7 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v14.0.0｜スマート写真選択・防除ローテーション・32トン栽培司令室</footer>
+<footer class="app-footer">HARUNO32 v15.0.0｜栽培マスターAI・学習ノート・失敗データベース</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
