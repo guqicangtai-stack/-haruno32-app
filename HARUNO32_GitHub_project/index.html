@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#24563a">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=11.0.0">
+  <link rel="stylesheet" href="styles.css?v=12.0.0">
   <title>HARUNO32</title>
 </head>
 <body>
@@ -24,6 +24,7 @@
   <button data-view="center">栽培センター</button>
   <button data-view="dashboard">ダッシュボード</button>
   <button data-view="assistant">AIアシスタント</button>
+  <button data-view="decision">意思決定</button>
   <button data-view="environment">SAWACHI</button>
   <button data-view="history">履歴</button>
   <button data-view="settings">設定</button>
@@ -332,6 +333,59 @@
   </section>
 </section>
 
+
+<section id="decision" class="view">
+  <section class="card decision-hero">
+    <div>
+      <p class="eyebrow">HARUNO32 DECISION ENGINE</p>
+      <h2>今日の意思決定ボード</h2>
+      <p class="muted">データから「今日やること・見送ること・確認すること」を整理します。</p>
+    </div>
+    <span id="decisionRisk" class="priority-level">準備中</span>
+  </section>
+
+  <div class="decision-grid">
+    <section class="card">
+      <p class="eyebrow">TODAY'S THREE MOVES</p>
+      <h2>今日の3手</h2>
+      <div id="todayThreeMoves" class="move-list"></div>
+      <button id="copyDecisionBrief" class="secondary">判断メモをコピー</button>
+    </section>
+    <section class="card">
+      <p class="eyebrow">PACE FORECAST</p>
+      <h2>32トン収穫ペース予測</h2>
+      <div id="paceForecast"></div>
+      <p class="muted">単純な実績ペースによる参考値です。作型・収穫曲線を反映した確率ではありません。</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <p class="eyebrow">CHANGE ALERTS</p>
+    <h2>変化アラート</h2>
+    <div id="changeAlerts" class="alert-grid"></div>
+  </section>
+
+  <div class="decision-grid">
+    <section class="card">
+      <p class="eyebrow">DECISION LOG</p>
+      <h2>判断を記録する</h2>
+      <form id="decisionForm" class="operation-form">
+        <label>日付<input id="decisionDate" type="date" required></label>
+        <label>ハウス<select id="decisionHouse"><option>南ハウス</option><option>北ハウス</option><option>両方</option></select></label>
+        <label>今日の判断<textarea id="decisionAction" required placeholder="例：午後の灌水を日射で判断し、弱日射なら1回減らす"></textarea></label>
+        <label>判断の理由<textarea id="decisionReason" placeholder="例：草勢4、前日より気温低下、根域は十分湿っている"></textarea></label>
+        <label>結果・振り返り<textarea id="decisionResult" placeholder="後から追記する結果メモ"></textarea></label>
+        <button class="primary" type="submit">判断ログを保存</button>
+        <p id="decisionStatus" class="status"></p>
+      </form>
+    </section>
+    <section class="card">
+      <div class="row-between"><div><p class="eyebrow">RECENT DECISIONS</p><h2>最近の判断</h2></div><button id="syncDecisionsBtn" class="secondary compact">クラウド同期</button></div>
+      <div id="decisionList" class="record-list"></div>
+    </section>
+  </div>
+</section>
+
 <section id="environment" class="view">
   <div class="layout">
     <section class="card">
@@ -433,7 +487,7 @@
   </div>
 </section>
 </main>
-<footer class="app-footer">HARUNO32 v11.0.0｜朝のAIブリーフ・比較・32トンメーター・栽培日誌・写真タイムライン</footer>
+<footer class="app-footer">HARUNO32 v12.0.0｜朝のAIブリーフ・比較・32トンメーター・栽培日誌・写真タイムライン</footer>
 
 <dialog id="shareDialog">
   <div class="modal">
@@ -448,6 +502,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=11.0.0"></script>
+<script src="app.js?v=12.0.0"></script>
 </body>
 </html>

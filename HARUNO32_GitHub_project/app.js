@@ -3,7 +3,8 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="11.0.0";
+const APP_VERSION="12.0.0";
+const DECISION_KEY="haruno32_decisions_v1";
 const TARGET_KEY="haruno32_target_settings_v1";
 function ensureDefaultConnection(){
   const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
@@ -14,7 +15,7 @@ function ensureDefaultConnection(){
 }
 ensureDefaultConnection();
 
-let selectedFiles=[], records=[], envImports=[], operations=[], supabaseClient=null, activeRecord=null;
+let selectedFiles=[], records=[], envImports=[], operations=[], decisions=[], supabaseClient=null, activeRecord=null;
 const $=id=>document.getElementById(id);
 
 $("date").value=new Date().toISOString().slice(0,10);
@@ -365,6 +366,33 @@ async function syncOperationsToCloud(){
   await loadOperations();
   return local.length;
 }
+
+function localLoadDecisions(){try{return JSON.parse(localStorage.getItem(DECISION_KEY)||"[]")}catch{return[]}}
+function localSaveDecisions(){localStorage.setItem(DECISION_KEY,JSON.stringify(decisions))}
+function decisionFromCloud(d){return {id:d.id,date:d.decision_date,house:d.house,action:d.action_text||"",reason:d.reason_text||"",result:d.result_text||"",created_at:d.created_at||new Date().toISOString()}}
+function decisionToCloud(d){return {id:d.id,decision_date:d.date,house:d.house,action_text:d.action||"",reason_text:d.reason||"",result_text:d.result||"",created_at:d.created_at||new Date().toISOString(),updated_at:new Date().toISOString()}}
+async function loadDecisions(){
+  const local=localLoadDecisions();
+  if(!supabaseClient){decisions=local.sort((a,b)=>(b.date+b.created_at).localeCompare(a.date+a.created_at));return}
+  const {data,error}=await supabaseClient.from("decision_logs").select("*").order("decision_date",{ascending:false}).order("created_at",{ascending:false});
+  if(error){decisions=local;return}
+  decisions=(data||[]).map(decisionFromCloud);localSaveDecisions();
+}
+async function saveDecision(d){
+  decisions=[d,...localLoadDecisions().filter(x=>x.id!==d.id)];localSaveDecisions();
+  if(supabaseClient){const {error}=await supabaseClient.from("decision_logs").upsert(decisionToCloud(d));if(error)throw error}
+}
+async function deleteDecision(id){
+  decisions=decisions.filter(d=>d.id!==id);localSaveDecisions();
+  if(supabaseClient){const {error}=await supabaseClient.from("decision_logs").delete().eq("id",id);if(error)throw error}
+}
+async function syncDecisions(){
+  if(!supabaseClient)throw new Error("オンライン接続されていません");
+  const local=localLoadDecisions();
+  if(local.length){const {error}=await supabaseClient.from("decision_logs").upsert(local.map(decisionToCloud));if(error)throw error}
+  await loadDecisions();return local.length;
+}
+
 function numberOrZero(v){const n=Number(v);return Number.isFinite(n)?n:0}
 function operationKpis(){
   const today=new Date().toISOString().slice(0,10);
@@ -919,12 +947,57 @@ function renderAssistant(){
 }
 function copyTextSafe(text,message){navigator.clipboard.writeText(text).then(()=>alert(message)).catch(()=>prompt("コピーしてください",text));}
 
+
+function decisionEngineData(){
+  const latest=records[0], env=latestEnvironmentDay(), t=targetProgressData(), a=centerAdviceData();
+  const moves=[], alerts=[];
+  if(!latest){moves.push("草勢スコアと代表株写真2枚を記録する");alerts.push({level:"start",title:"判断材料不足",text:"本日の植物記録がありません。"});}
+  else{
+    const v=Number(latest.vigor||0);
+    if(v<=2) moves.push("根域の湿り・根傷み・低温を確認してから灌水や施肥を変える");
+    else if(v>=5) moves.push("着果負担と葉量を確認し、窒素を増やさない");
+    else moves.push("代表株を前回写真と比較し、急な管理変更を避ける");
+    const prev=records.find(r=>r.id!==latest.id&&r.house===latest.house);
+    if(prev){const dv=v-Number(prev.vigor||0);if(Math.abs(dv)>=2)alerts.push({level:"alert",title:"草勢が急変",text:`前回比 ${fmtDelta(dv)}。根・日射・着果負担を確認してください。`});}
+  }
+  if(env){
+    const vpd=calcVpd(env.temp_avg,env.humidity_avg);
+    if(vpd!==null&&vpd<0.4){moves.push("朝の結露と病害リスクを確認し、必要なら換気・循環を優先する");alerts.push({level:"alert",title:"多湿傾向",text:`概算飽差 ${vpd}kPa。結露と蒸散不足に注意。`});}
+    else if(vpd!==null&&vpd>1.5){moves.push("日射と萎れを見て、少量多回灌水の必要性を確認する");alerts.push({level:"alert",title:"乾燥負担",text:`概算飽差 ${vpd}kPa。吸水負担に注意。`});}
+    else moves.push("日射の変化に合わせて午後の灌水回数を判断する");
+  }else moves.push("SAWACHIの最新CSVを取り込み、気温・湿度・CO₂を確認する");
+  if(t.today>=t.s.cropStart&&t.gap<0){moves.push(`計画差 ${Math.abs(t.gap).toFixed(0)}kgを確認し、草勢を落とさず収穫ペース改善策を1つ決める`);alerts.push({level:"warn",title:"計画ペース未満",text:`線形計画比 ${fmtDelta(t.gap,"kg")}。必要日平均 ${t.requiredDaily.toFixed(1)}kg。`});}
+  if(!alerts.length)alerts.push({level:"normal",title:"大きな急変なし",text:"入力済みデータでは強い警戒サインはありません。現場確認を優先してください。"});
+  while(moves.length<3)moves.push("今日の収穫量・灌水・施肥実績を記録する");
+  return {level:a.level,label:a.label,moves:[...new Set(moves)].slice(0,3),alerts,t};
+}
+function paceForecastData(){
+  const t=targetProgressData();
+  const elapsedHarvestDays=Math.max(1,t.elapsed);
+  const avg=t.harvest/elapsedHarvestDays;
+  const projected=Math.max(0,avg*t.totalDays);
+  const ratio=t.s.targetKg?projected/t.s.targetKg*100:0;
+  return {...t,avg,projected,ratio};
+}
+function renderDecision(){
+  if(!$("todayThreeMoves"))return;
+  const d=decisionEngineData(),p=paceForecastData();
+  $("decisionRisk").className=`priority-level ${d.level}`;$("decisionRisk").textContent=d.label;
+  $("todayThreeMoves").innerHTML=d.moves.map((x,i)=>`<div class="move-item"><b>${i+1}</b><span>${esc(x)}</span></div>`).join("");
+  const projectedPct=Math.min(140,Math.max(0,p.ratio));
+  $("paceForecast").innerHTML=`<div class="forecast-number"><strong>${p.projected.toFixed(0)}</strong><span>kg 予測</span></div><div class="target-progress"><i style="width:${Math.min(100,projectedPct)}%"></i></div><div class="target-stats"><div><span>実績日平均</span><b>${p.avg.toFixed(1)}kg</b></div><div><span>目標比</span><b>${p.ratio.toFixed(1)}%</b></div><div><span>必要日平均</span><b>${p.requiredDaily.toFixed(1)}kg</b></div><div><span>計画差</span><b>${fmtDelta(p.gap,"kg")}</b></div></div>`;
+  $("changeAlerts").innerHTML=d.alerts.map(x=>`<article class="change-alert ${x.level}"><strong>${esc(x.title)}</strong><p>${esc(x.text)}</p></article>`).join("");
+  $("decisionList").innerHTML=decisions.length?decisions.slice(0,20).map(x=>`<article class="record"><div class="record-head"><div><strong>${esc(x.date)}｜${esc(x.house)}</strong><p class="meta">${esc(x.action)}</p></div><button class="delete-btn" data-decision-delete="${x.id}">削除</button></div>${x.reason?`<p><b>理由：</b>${esc(x.reason)}</p>`:""}${x.result?`<p><b>結果：</b>${esc(x.result)}</p>`:""}</article>`).join(""):'<div class="empty">判断ログはまだありません。</div>';
+  document.querySelectorAll('[data-decision-delete]').forEach(b=>b.onclick=()=>{if(confirm("この判断ログを削除しますか？"))deleteDecision(b.dataset.decisionDelete).then(()=>renderAll()).catch(e=>alert(e.message))});
+}
+
 function renderAll(){
   renderEnvironment();
   renderCenter();
   renderDashboardPlus();
   renderHome();
   renderAssistant();
+  renderDecision();
   $("analysisRecord").innerHTML=records.map(r=>`<option value="${r.id}">${r.record_date}｜${esc(r.house)}</option>`).join("")||"<option>記録なし</option>";
   const analyzed=records.filter(r=>r.analysis).length,avg=records.length?(records.reduce((s,r)=>s+Number(r.vigor),0)/records.length).toFixed(1):"-";
   $("metrics").innerHTML=[
@@ -1113,11 +1186,21 @@ if($("cropStart"))$("cropStart").value=ts.cropStart;
 if($("cropEnd"))$("cropEnd").value=ts.cropEnd;
 
 
+
+if($("decisionDate"))$("decisionDate").value=new Date().toISOString().slice(0,10);
+if($("decisionForm"))$("decisionForm").onsubmit=async e=>{
+  e.preventDefault();
+  const d={id:crypto.randomUUID(),date:$("decisionDate").value,house:$("decisionHouse").value,action:$("decisionAction").value.trim(),reason:$("decisionReason").value.trim(),result:$("decisionResult").value.trim(),created_at:new Date().toISOString()};
+  try{await saveDecision(d);await loadDecisions();e.target.reset();$("decisionDate").value=new Date().toISOString().slice(0,10);$("decisionStatus").textContent=supabaseClient?"判断ログをクラウド保存しました":"判断ログを端末内保存しました";$("decisionStatus").classList.add("show");renderAll();}catch(err){$("decisionStatus").textContent="保存できませんでした："+err.message;$("decisionStatus").classList.add("show")}
+};
+if($("syncDecisionsBtn"))$("syncDecisionsBtn").onclick=async()=>{try{const n=await syncDecisions();renderAll();alert(`判断ログを同期しました（端末内 ${n}件）`)}catch(e){alert(`同期できませんでした。最新版の supabase_setup.sql を実行してください。\n\n${e.message}`)}};
+if($("copyDecisionBrief"))$("copyDecisionBrief").onclick=()=>{const d=decisionEngineData();copyTextSafe(`【HARUNO32 今日の意思決定】\n${d.moves.map((x,i)=>`${i+1}. ${x}`).join("\n")}\n\n【変化アラート】\n${d.alerts.map(x=>`・${x.title}：${x.text}`).join("\n")}`,"判断メモをコピーしました")};
+
 envImports=envLoad();
 (async()=>{
   initSupabase();
   const ok=await updateBadge(false);
-  if(ok){await loadRecords();await loadOperations();}
-  else{records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));await loadOperations();}
+  if(ok){await loadRecords();await loadOperations();await loadDecisions();}
+  else{records=localLoad().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));await loadOperations();await loadDecisions();}
   renderAll();
 })();

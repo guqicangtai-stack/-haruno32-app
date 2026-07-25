@@ -306,3 +306,13 @@ dialog{border:0;border-radius:18px;width:min(700px,calc(100% - 24px));max-height
 .journal-box{white-space:pre-wrap;line-height:1.8;background:#f5f8f5;border-left:5px solid var(--green);padding:18px;border-radius:13px;font-weight:650}
 .photo-timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.photo-timeline figure{margin:0;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}.photo-timeline img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;cursor:zoom-in}.photo-timeline figcaption{padding:9px}.photo-timeline figcaption strong,.photo-timeline figcaption span{display:block}.photo-timeline figcaption span{font-size:.78rem;color:var(--muted);margin-top:3px}.soft-line{border:0;border-top:1px solid var(--line);margin:22px 0}
 @media(max-width:760px){.assistant-hero{align-items:flex-start}.assistant-grid,.comparison-cards{grid-template-columns:1fr}.photo-timeline{grid-template-columns:repeat(2,1fr)}}
+
+
+/* HARUNO32 v12 Decision Engine */
+.decision-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;background:linear-gradient(135deg,#f5faf6,#e8f2ea);border-top:5px solid #24563a}
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:18px 0}
+.move-list{display:grid;gap:12px;margin:14px 0 18px}.move-item{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:center;padding:13px;border:1px solid var(--line);border-radius:14px;background:#fafcf9}.move-item b{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--green);color:#fff}.move-item span{font-weight:800;line-height:1.55}
+.forecast-number{margin:14px 0}.forecast-number strong{font-size:2.6rem;color:var(--green)}.forecast-number span{margin-left:6px;font-weight:800;color:var(--muted)}
+.alert-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.change-alert{padding:15px;border-radius:14px;background:#eef3ef;border:1px solid var(--line)}.change-alert p{margin:.45rem 0 0;line-height:1.55}.change-alert.alert{background:#fff0dc;border-color:#edc995}.change-alert.warn{background:#fff7df;border-color:#e6d49a}.change-alert.start{background:#eaf0f8;border-color:#bfd0e5}
+.delete-btn{width:auto;padding:8px 10px;background:#f5e6e5;color:#8b2e2e}
+@media(max-width:760px){.decision-hero{align-items:flex-start;flex-direction:column}.decision-grid,.alert-grid{grid-template-columns:1fr}}

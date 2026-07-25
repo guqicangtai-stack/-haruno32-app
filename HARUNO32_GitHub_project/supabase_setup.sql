@@ -71,3 +71,25 @@ on public.cultivation_operations for update to anon using (true) with check (tru
 
 create policy "allow anon operations delete"
 on public.cultivation_operations for delete to anon using (true);
+
+
+-- HARUNO32 v12: 意思決定ログ
+create table if not exists public.decision_logs (
+  id uuid primary key,
+  decision_date date not null,
+  house text not null,
+  action_text text not null default '',
+  reason_text text not null default '',
+  result_text text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.decision_logs enable row level security;
+drop policy if exists "allow anon decisions select" on public.decision_logs;
+drop policy if exists "allow anon decisions insert" on public.decision_logs;
+drop policy if exists "allow anon decisions update" on public.decision_logs;
+drop policy if exists "allow anon decisions delete" on public.decision_logs;
+create policy "allow anon decisions select" on public.decision_logs for select to anon using (true);
+create policy "allow anon decisions insert" on public.decision_logs for insert to anon with check (true);
+create policy "allow anon decisions update" on public.decision_logs for update to anon using (true) with check (true);
+create policy "allow anon decisions delete" on public.decision_logs for delete to anon using (true);

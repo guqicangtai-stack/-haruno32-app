@@ -1,0 +1,11 @@
+HARUNO32 v12 更新手順
+
+1. このフォルダの中身をGitHubへ上書きアップロード
+2. Commit changes
+3. NetlifyがPublishedになるまで待つ
+4. Supabase SQL Editorで最新版 supabase_setup.sql を実行
+5. HARUNO32を ?v=12 で開く
+6. 「意思決定」タブを確認
+7. 判断ログを1件保存し、スマホとPCで同期確認
+
+既存の日次記録・写真・収穫実績は削除されません。
