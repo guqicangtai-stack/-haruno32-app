@@ -3,7 +3,7 @@ const ENV_KEY="haruno32_environment_v1";
 const OPS_KEY="haruno32_operations_v1";
 const DEFAULT_SUPABASE_URL="https://zlpfidmfeeknnfvrgyyp.supabase.co";
 const DEFAULT_SUPABASE_KEY="";
-const APP_VERSION="20.0.0";
+const APP_VERSION="24.0.0";
 const PROFILE_KEY="haruno32_farm_profile_v1";
 const ONBOARDING_KEY="haruno32_onboarding_complete_v1";
 const PEST_KEY="haruno32_pest_records_v1";
@@ -51,11 +51,21 @@ function openOnboarding(){
 }
 
 function ensureDefaultConnection(){
-  const savedUrl=(localStorage.getItem("haruno32_supabase_url")||"").trim();
-  const savedKey=(localStorage.getItem("haruno32_supabase_key")||"").trim();
-  if(!savedUrl) localStorage.setItem("haruno32_supabase_url",DEFAULT_SUPABASE_URL);
-  // V5/V6に入っていた途中で切れたキーを自動削除します。
-  if(savedKey==="sb_publishable_pswWBc9LE6xfvrvHCpstvg_IDMkfSi-") localStorage.removeItem("haruno32_supabase_key");
+  // Project URLは製品側で固定。更新のたびに再入力させません。
+  localStorage.setItem("haruno32_supabase_url",DEFAULT_SUPABASE_URL);
+
+  // 旧版で使っていた可能性のある保存名からキーを自動移行します。
+  const current=(localStorage.getItem("haruno32_supabase_key")||"").trim();
+  if(!current){
+    const legacyNames=["haruno32_supabase_anon_key","supabase_anon_key","supabaseKey","SUPABASE_ANON_KEY","sb_anon_key"];
+    for(const name of legacyNames){
+      const value=(localStorage.getItem(name)||"").replace(/\s+/g,"").trim();
+      if(value && (value.startsWith("eyJ")||value.startsWith("sb_publishable_"))){
+        localStorage.setItem("haruno32_supabase_key",value);
+        break;
+      }
+    }
+  }
 }
 ensureDefaultConnection();
 
@@ -98,11 +108,28 @@ function initSupabase(){
   }catch(e){
     supabaseClient=null;
   }
-  $("supabaseUrl").value=s.url;
-  $("supabaseKey").value=s.key;
+  if($("supabaseUrl")) $("supabaseUrl").value=s.url;
+  if($("supabaseKey")) $("supabaseKey").value=s.key;
+  renderCloudConnectionState("checking");
   updateBadge();
 }
 
+
+function renderCloudConnectionState(state="offline",detail=""){
+  const dot=$("cloudStatusDot"), title=$("cloudStatusTitle"), text=$("cloudStatusText"), panel=$("cloudTechnicalSetup"), setupBtn=$("openCloudSetup");
+  if(!title||!text)return;
+  const map={
+    checking:["確認中","クラウド接続を確認しています。"],
+    online:["接続済み","記録はスマホとPCで自動共有されます。"],
+    offline:["未接続","最初の1回だけ公開用キーの登録が必要です。"],
+    error:["接続エラー",detail||"接続情報を確認してください。"]
+  };
+  const [t,m]=map[state]||map.offline;
+  title.textContent=t;text.textContent=m;
+  if(dot){dot.className=`cloud-status-dot ${state}`;}
+  if(panel && state==="online") panel.open=false;
+  if(setupBtn) setupBtn.hidden=state==="online";
+}
 function maskKey(key=""){
   if(!key)return "未設定";
   if(key.length<=16)return `${key.slice(0,5)}…（${key.length}文字）`;
@@ -155,7 +182,9 @@ async function updateBadge(showMessage=false){
   const b=$("syncBadge");
   if(!supabaseClient){
     b.textContent=`端末内保存｜v${APP_VERSION}`;
-    if(showMessage)alert("SupabaseのURLとPublishable keyを入力して保存してください");
+    b.classList.remove("online","error");
+    renderCloudConnectionState("offline");
+    if(showMessage)alert("最初の1回だけ、Supabaseの anon（public）キーを登録してください");
     return false;
   }
   try{
@@ -164,13 +193,16 @@ async function updateBadge(showMessage=false){
     b.classList.add("online");
     b.classList.remove("error");
     showConnectionDiagnostic("接続成功：スマホとPCで同じクラウドを使用します","success");
-    if(showMessage)alert("接続成功：オンライン同期になりました");
+    renderCloudConnectionState("online");
+    if($("cloudLastSync")) $("cloudLastSync").textContent=new Date().toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
+    if(showMessage)alert("接続成功：今後は再入力不要です");
     return true;
   }catch(e){
     b.textContent=`接続エラー｜v${APP_VERSION}`;
     b.classList.add("error");
     b.classList.remove("online");
     showConnectionDiagnostic(`接続失敗：${e.message}`,"error");
+    renderCloudConnectionState("error",e.message);
     if(showMessage)alert(`接続できませんでした\n\n${e.message}`);
     const fs=$("formStatus");
     if(fs){fs.textContent=`接続エラー：${e.message}`;fs.classList.add("show");}
@@ -1428,21 +1460,22 @@ function recordHTML(r,actions){
 $("refreshBtn").onclick=async()=>{await loadRecords();await loadOperations();renderAll()};
 $("historyHouse").onchange=renderHistory;
 $("historySearch").oninput=renderHistory;
-$("saveSettings").onclick=async()=>{
-  const url=normalizeSupabaseUrl($("supabaseUrl").value);
-  const key=$("supabaseKey").value.replace(/\s+/g,"").trim();
-  if(url) localStorage.setItem("haruno32_supabase_url",url);
-  else localStorage.removeItem("haruno32_supabase_url");
+if($("saveSettings")) $("saveSettings").onclick=async()=>{
+  const key=($("supabaseKey")?.value||"").replace(/\s+/g,"").trim();
+  localStorage.setItem("haruno32_supabase_url",DEFAULT_SUPABASE_URL);
   if(key) localStorage.setItem("haruno32_supabase_key",key);
-  else localStorage.removeItem("haruno32_supabase_key");
-  $("supabaseKey").value=key;
-  initSupabase();
-  await updateBadge(true);
-};
-$("testConnection").onclick=async()=>{
+  if($("supabaseKey")) $("supabaseKey").value=key;
   initSupabase();
   const ok=await updateBadge(true);
   if(ok){await loadRecords();await loadOperations();renderAll();}
+};
+if($("testConnection")) $("testConnection").onclick=async()=>{
+  initSupabase();
+  const ok=await updateBadge(true);
+  if(ok){await loadRecords();await loadOperations();renderAll();}
+};
+if($("openCloudSetup")) $("openCloudSetup").onclick=()=>{
+  const panel=$("cloudTechnicalSetup");if(panel){panel.open=true;setTimeout(()=>$("supabaseKey")?.focus(),50)}
 };
 $("syncLocalBtn").onclick=async()=>{
   const btn=$("syncLocalBtn");

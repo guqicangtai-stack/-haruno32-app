@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1510">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=23.0.0">
+  <link rel="stylesheet" href="styles.css?v=24.0.0">
   <title>HARUNO32</title>
 </head>
 <body class="product-11">
@@ -736,18 +736,31 @@
     <p id="profileSaveStatus" class="status"></p>
   </section>
   <div class="layout">
-    <section class="card">
-      <h2>オンライン接続設定 <small class="setting-note">通常は操作不要</small></h2>
-      <p class="muted">Project URLは自動設定済みです。接続には「Legacy anon, service_role API keys」タブの anon（public）を使います。service_roleは絶対に使わないでください。</p>
-      <label>Supabase URL<input id="supabaseUrl" type="url" placeholder="https://xxxxx.supabase.co"></label>
-      <label>Supabase anon key<textarea id="supabaseKey" placeholder="eyJで始まる anon（public）キー"></textarea></label>
-      <button id="saveSettings" class="primary">接続設定を保存</button>
-      <button id="testConnection" class="secondary">接続を確認</button>
-      <div id="connectionDiagnostic" class="diagnostic info">
-        <strong>接続診断</strong>
-        <div>まだ接続テストをしていません。</div>
+    <section class="card cloud-product-card">
+      <div class="cloud-card-head">
+        <div>
+          <p class="eyebrow">HARUNO32 CLOUD</p>
+          <h2>クラウド同期</h2>
+        </div>
+        <span id="cloudStatusDot" class="cloud-status-dot checking" aria-hidden="true"></span>
       </div>
-      <button id="syncLocalBtn" class="secondary">端末内の記録をクラウドへ同期</button>
+      <div class="cloud-status-main">
+        <strong id="cloudStatusTitle">確認中</strong>
+        <p id="cloudStatusText">クラウド接続を確認しています。</p>
+        <small>最終確認：<span id="cloudLastSync">—</span></small>
+      </div>
+      <div class="quick-actions">
+        <button id="syncLocalBtn" class="primary">端末内の記録をクラウドへ同期</button>
+        <button id="openCloudSetup" class="secondary" type="button">初回接続を設定</button>
+      </div>
+      <details id="cloudTechnicalSetup" class="cloud-technical">
+        <summary>接続情報（初回のみ）</summary>
+        <p class="muted">Project URLは製品に設定済みです。Supabaseの <strong>anon（public）</strong> キーを一度保存すると、アプリ更新後もこの端末に保持されます。service_roleキーは入力しないでください。</p>
+        <label>Project URL<input id="supabaseUrl" type="url" readonly></label>
+        <label>anon（public）キー<textarea id="supabaseKey" autocomplete="off" spellcheck="false" placeholder="eyJ または sb_publishable_ で始まる公開用キー"></textarea></label>
+        <div class="quick-actions"><button id="saveSettings" class="primary">保存して接続</button><button id="testConnection" class="secondary">接続を確認</button></div>
+        <div id="connectionDiagnostic" class="diagnostic info"><strong>接続診断</strong><div>まだ接続テストをしていません。</div></div>
+      </details>
       <hr class="soft-line">
       <h3>32トン目標設定</h3>
       <div class="input-pair">
